@@ -118,7 +118,7 @@ public:
   void clearError() { lastError.clear(); }
 
 private:
-  std::string lastError; // 最后一次错误信息
+  mutable std::string lastError; // 最后一次错误信息
 
   // 辅助方法
   std::string getFullPath(const std::string &filename) const;
