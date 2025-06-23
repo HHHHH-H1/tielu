@@ -1,13 +1,19 @@
+#include "FileManager.h"
 #include "PassengerFlow.h"
 #include "Route.h"
 #include "Station.h"
 #include "Train.h"
-#include "FileManager.h"
 #include <iomanip>
 #include <iostream>
 #include <memory>
 #include <vector>
 
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#include <windows.h>
+
+#endif
 
 using namespace std;
 
@@ -229,6 +235,12 @@ void generateDailyReport(const PassengerFlow &passengerFlow) {
 }
 
 int main() {
+  // 设置Windows控制台支持UTF-8编码
+#ifdef _WIN32
+  SetConsoleOutputCP(65001);
+  SetConsoleCP(65001);
+#endif
+
   cout << "川渝地区轨道交通客流数据分析与展示系统" << endl;
   cout << "版本: 1.0" << endl;
   cout << "开发团队: [学生姓名]" << endl << endl;
