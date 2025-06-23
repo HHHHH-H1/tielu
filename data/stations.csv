@@ -1,5 +1,0 @@
-StationID,StationName,CityName,Longitude,Latitude,StationType,PlatformCount,IsTransferStation
-CQ001,重庆北站,重庆,106.5516,29.8132,起始站,8,1
-CQ002,重庆西站,重庆,106.4270,29.5308,中间站,6,0
-CD001,成都东站,成都,104.1414,30.6302,终点站,12,1
-CD002,成都南站,成都,104.0633,30.6115,中间站,4,0
