@@ -2,6 +2,7 @@
 #include "Route.h"
 #include "Station.h"
 #include "Train.h"
+#include "FileManager.h"
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -237,8 +238,13 @@ int main() {
   vector<shared_ptr<Route>> routes;
   vector<shared_ptr<Train>> trains;
   PassengerFlow passengerFlow;
+  FileManager fileManager("data");
 
-  initSampleData(stations, routes, trains, passengerFlow);
+  if (!fileManager.importAllData(stations, routes, trains, passengerFlow)) {
+    cout << "未找到数据文件，初始化示例数据..." << endl;
+    initSampleData(stations, routes, trains, passengerFlow);
+    fileManager.exportAllData(stations, routes, trains, passengerFlow);
+  }
 
   int choice;
   do {
@@ -288,6 +294,8 @@ int main() {
     }
 
   } while (choice != 0);
+
+  fileManager.exportAllData(stations, routes, trains, passengerFlow);
 
   return 0;
 }
