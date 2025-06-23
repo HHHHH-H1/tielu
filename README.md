@@ -146,6 +146,18 @@ RecordID,StationID,StationName,Date,Hour,BoardingCount,AlightingCount,TrainID,Di
 F001,CD001,成都东站,2024-12-15,8,350,120,G8501,川->渝
 ```
 
+### 数据集编码
+
+部分原始CSV文件以`GB18030`编码存储，直接打开会出现乱码。可使用仓库提供的脚本
+`tools/convert_encoding.py`将其统一转换为UTF‑8：
+
+```bash
+# 将 data 目录下的 CSV 转换到 data_utf8 目录
+python3 tools/convert_encoding.py data data_utf8
+```
+
+转换后生成的`data_utf8`目录可供程序或其他工具读取。
+
 ## 项目结构
 
 ```

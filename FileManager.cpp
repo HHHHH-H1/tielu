@@ -6,18 +6,22 @@
 
 // 构造函数
 FileManager::FileManager() : dataDirectory("data") {
-  stationsFile = "stations.csv";
-  routesFile = "routes.csv";
-  trainsFile = "trains.csv";
-  flowRecordsFile = "flow_records.csv";
+  stationsFile = "客运站点（站点名称、站点编号、备注）.csv";
+  routesFile =
+      "运营线路客运站（运营线路编码、站点id、线路站点id、上一站id、运营线路站间距离 、下一站id、运输距离、线路代码）.csv";
+  trainsFile = "列车表（列车编码、列车代码、列车运量）.csv";
+  flowRecordsFile =
+      "高铁客运量（成都--重庆）（运营线路编码、列车编码、站点id、日期、到达时间、出发时间、上客量、下客量等，起点站、终点站、票价、收入等）.csv";
   configFile = "config.txt";
 }
 
 FileManager::FileManager(const std::string &dataDir) : dataDirectory(dataDir) {
-  stationsFile = "stations.csv";
-  routesFile = "routes.csv";
-  trainsFile = "trains.csv";
-  flowRecordsFile = "flow_records.csv";
+  stationsFile = "客运站点（站点名称、站点编号、备注）.csv";
+  routesFile =
+      "运营线路客运站（运营线路编码、站点id、线路站点id、上一站id、运营线路站间距离 、下一站id、运输距离、线路代码）.csv";
+  trainsFile = "列车表（列车编码、列车代码、列车运量）.csv";
+  flowRecordsFile =
+      "高铁客运量（成都--重庆）（运营线路编码、列车编码、站点id、日期、到达时间、出发时间、上客量、下客量等，起点站、终点站、票价、收入等）.csv";
   configFile = "config.txt";
 }
 
