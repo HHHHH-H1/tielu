@@ -121,6 +121,118 @@ private slots:
                       .arg(pair.second, 0, 'f', 1)
                       .arg(status);
       }
+    } else if (analysisType == QString::fromUtf8("站点客流预测")) {
+      int days = predictionDaysCombo->currentText().toInt();
+      QString selectedStation = stationCombo->currentText();
+
+      if (selectedStation.isEmpty() || stations.empty()) {
+        result = QString::fromUtf8("请先选择要预测的站点！");
+      } else {
+        // 找到对应的站点ID
+        std::string stationId;
+        for (const auto &station : stations) {
+          if (QString::fromStdString(station->getStationName()) ==
+              selectedStation) {
+            stationId = station->getStationId();
+            break;
+          }
+        }
+
+        if (!stationId.empty()) {
+          auto prediction = passengerFlow.predictFlow(stationId, days);
+
+          result =
+              QString::fromUtf8("站点客流预测报告\n") +
+              QString::fromUtf8("=====================================\n") +
+              QString::fromUtf8("预测站点: %1\n").arg(selectedStation) +
+              QString::fromUtf8("预测天数: %1 天\n\n").arg(days) +
+              QString::fromUtf8("预测结果:\n");
+
+          for (int i = 0; i < static_cast<int>(prediction.size()); ++i) {
+            result += QString::fromUtf8("第 %1 天: %2 人次\n")
+                          .arg(i + 1)
+                          .arg(prediction[i]);
+          }
+
+          // 计算平均预测值
+          if (!prediction.empty()) {
+            int avgFlow = 0;
+            for (int flow : prediction) {
+              avgFlow += flow;
+            }
+            avgFlow /= prediction.size();
+
+            result +=
+                QString::fromUtf8("\n平均预测客流: %1 人次/天\n").arg(avgFlow);
+
+            if (avgFlow > 200) {
+              result += QString::fromUtf8("建议: 高客流站点，注意运力调配");
+            } else if (avgFlow > 100) {
+              result += QString::fromUtf8("建议: 中等客流站点，维持正常运营");
+            } else {
+              result += QString::fromUtf8("建议: 低客流站点，可优化班次安排");
+            }
+          }
+        } else {
+          result = QString::fromUtf8("未找到选中的站点信息！");
+        }
+      }
+
+    } else if (analysisType == QString::fromUtf8("川渝双向预测")) {
+      int days = predictionDaysCombo->currentText().toInt();
+
+      auto cd2cqPrediction =
+          passengerFlow.predictDirectionalFlow("川->渝", days);
+      auto cq2cdPrediction =
+          passengerFlow.predictDirectionalFlow("渝->川", days);
+
+      result = QString::fromUtf8("川渝双向流量预测报告\n") +
+               QString::fromUtf8("=====================================\n") +
+               QString::fromUtf8("预测天数: %1 天\n\n").arg(days);
+
+      result += QString::fromUtf8("川 → 渝 方向预测:\n");
+      for (int i = 0; i < static_cast<int>(cd2cqPrediction.size()); ++i) {
+        result += QString::fromUtf8("第 %1 天: %2 人次\n")
+                      .arg(i + 1)
+                      .arg(cd2cqPrediction[i]);
+      }
+
+      result += QString::fromUtf8("\n渝 → 川 方向预测:\n");
+      for (int i = 0; i < static_cast<int>(cq2cdPrediction.size()); ++i) {
+        result += QString::fromUtf8("第 %1 天: %2 人次\n")
+                      .arg(i + 1)
+                      .arg(cq2cdPrediction[i]);
+      }
+
+      // 计算预测平均比率
+      if (!cd2cqPrediction.empty() && !cq2cdPrediction.empty()) {
+        int avgCd2cq = 0, avgCq2cd = 0;
+        for (int i = 0; i < static_cast<int>(cd2cqPrediction.size()); ++i) {
+          avgCd2cq += cd2cqPrediction[i];
+          avgCq2cd += cq2cdPrediction[i];
+        }
+        avgCd2cq /= cd2cqPrediction.size();
+        avgCq2cd /= cq2cdPrediction.size();
+
+        double predictedRatio =
+            (avgCq2cd > 0) ? static_cast<double>(avgCd2cq) / avgCq2cd : 0.0;
+
+        result += QString::fromUtf8("\n预测分析:\n") +
+                  QString::fromUtf8("川→渝平均: %1 人次/天\n").arg(avgCd2cq) +
+                  QString::fromUtf8("渝→川平均: %1 人次/天\n").arg(avgCq2cd) +
+                  QString::fromUtf8("预测流量比: %1\n")
+                      .arg(predictedRatio, 0, 'f', 2);
+
+        if (predictedRatio > 1.2) {
+          result += QString::fromUtf8(
+              "预测结论: 川→渝方向将持续高于反向，建议增加该方向运力");
+        } else if (predictedRatio < 0.8) {
+          result += QString::fromUtf8(
+              "预测结论: 渝→川方向将持续高于反向，建议增加该方向运力");
+        } else {
+          result += QString::fromUtf8("预测结论: 双向流量将保持相对均衡");
+        }
+      }
     }
 
     analysisResults->setText(result);
@@ -151,6 +263,9 @@ private slots:
       break;
     case 3: // 列车载客率
       createTrainLoadChart();
+      break;
+    case 4: // 客流预测图表
+      createFlowPredictionChart();
       break;
     }
   }
@@ -315,6 +430,63 @@ private slots:
     chart->legend()->setVisible(true);
   }
 
+  void createFlowPredictionChart() {
+    // 创建川渝双向预测图表
+    QLineSeries *cd2cqSeries = new QLineSeries();
+    cd2cqSeries->setName(QString::fromUtf8("川→渝预测"));
+    cd2cqSeries->setColor(QColor("#007bff"));
+
+    QLineSeries *cq2cdSeries = new QLineSeries();
+    cq2cdSeries->setName(QString::fromUtf8("渝→川预测"));
+    cq2cdSeries->setColor(QColor("#dc3545"));
+
+    // 生成未来7天的预测数据
+    auto cd2cqPrediction = passengerFlow.predictDirectionalFlow("川->渝", 7);
+    auto cq2cdPrediction = passengerFlow.predictDirectionalFlow("渝->川", 7);
+
+    for (int i = 0; i < static_cast<int>(cd2cqPrediction.size()) && i < 7;
+         ++i) {
+      cd2cqSeries->append(i + 1, cd2cqPrediction[i]);
+    }
+
+    for (int i = 0; i < static_cast<int>(cq2cdPrediction.size()) && i < 7;
+         ++i) {
+      cq2cdSeries->append(i + 1, cq2cdPrediction[i]);
+    }
+
+    chart->addSeries(cd2cqSeries);
+    chart->addSeries(cq2cdSeries);
+
+    // 设置坐标轴
+    QValueAxis *axisX = new QValueAxis();
+    axisX->setRange(1, 7);
+    axisX->setLabelFormat("%d");
+    axisX->setTitleText(QString::fromUtf8("预测天数"));
+    chart->addAxis(axisX, Qt::AlignBottom);
+    cd2cqSeries->attachAxis(axisX);
+    cq2cdSeries->attachAxis(axisX);
+
+    QValueAxis *axisY = new QValueAxis();
+    int maxValue = 0;
+    if (!cd2cqPrediction.empty() || !cq2cdPrediction.empty()) {
+      for (int value : cd2cqPrediction) {
+        maxValue = std::max(maxValue, value);
+      }
+      for (int value : cq2cdPrediction) {
+        maxValue = std::max(maxValue, value);
+      }
+    }
+    axisY->setRange(0, maxValue > 0 ? maxValue * 1.1 : 1000);
+    axisY->setLabelFormat("%d");
+    axisY->setTitleText(QString::fromUtf8("预测客流量"));
+    chart->addAxis(axisY, Qt::AlignLeft);
+    cd2cqSeries->attachAxis(axisY);
+    cq2cdSeries->attachAxis(axisY);
+
+    chart->setTitle(QString::fromUtf8("川渝双向客流预测（未来7天）"));
+    chart->legend()->setVisible(true);
+  }
+
   void exportData() {
     QString fileName =
         QFileDialog::getSaveFileName(this, QString::fromUtf8("导出数据"), "",
@@ -343,6 +515,38 @@ private slots:
     aboutText += QString::fromUtf8("报告生成");
 
     QMessageBox::about(this, QString::fromUtf8("关于系统"), aboutText);
+  }
+
+  void onAnalysisTypeChanged(int index) {
+    // 根据选择的分析类型显示/隐藏相关控件
+    bool showPredictionDays = (index == 3 || index == 4); // 站点预测或川渝预测
+    bool showStationSelect = (index == 3); // 仅站点预测需要选择站点
+
+    predictionDaysLabel->setVisible(showPredictionDays);
+    predictionDaysCombo->setVisible(showPredictionDays);
+    stationLabel->setVisible(showStationSelect);
+    stationCombo->setVisible(showStationSelect);
+  }
+
+  void updateDisplays() {
+    updateStationList();
+    updateRouteList();
+    updateTrainList();
+    updateInfo();
+    updateChartDisplay();
+    updateStationCombo(); // 更新站点下拉列表
+  }
+
+  void updateStationCombo() {
+    stationCombo->clear();
+    stationCombo->addItem(QString::fromUtf8("请选择站点"));
+
+    for (const auto &station : stations) {
+      if (station) {
+        stationCombo->addItem(
+            QString::fromStdString(station->getStationName()));
+      }
+    }
   }
 
 private:
@@ -547,13 +751,35 @@ private:
     analysisTypeCombo = new QComboBox;
     analysisTypeCombo->addItems({QString::fromUtf8("站点客流排行"),
                                  QString::fromUtf8("川渝双向流量对比"),
-                                 QString::fromUtf8("列车载客率分析")});
+                                 QString::fromUtf8("列车载客率分析"),
+                                 QString::fromUtf8("站点客流预测"),
+                                 QString::fromUtf8("川渝双向预测")});
     controlLayout->addWidget(analysisTypeCombo);
+
+    // 预测天数选择（仅预测功能使用）
+    predictionDaysLabel = new QLabel(QString::fromUtf8("预测天数:"));
+    predictionDaysCombo = new QComboBox;
+    predictionDaysCombo->addItems({"1", "2", "3"});
+    predictionDaysCombo->setCurrentIndex(2); // 默认3天
+
+    controlLayout->addWidget(predictionDaysLabel);
+    controlLayout->addWidget(predictionDaysCombo);
+
+    // 站点选择（仅站点预测使用）
+    stationLabel = new QLabel(QString::fromUtf8("选择站点:"));
+    stationCombo = new QComboBox;
+    controlLayout->addWidget(stationLabel);
+    controlLayout->addWidget(stationCombo);
 
     QPushButton *analyzeBtn = new QPushButton(QString::fromUtf8("开始分析"));
     connect(analyzeBtn, &QPushButton::clicked, this,
             &RailwayMainWindow::performAnalysis);
     controlLayout->addWidget(analyzeBtn);
+
+    // 连接分析类型变化事件，动态显示/隐藏控件
+    connect(analysisTypeCombo,
+            QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &RailwayMainWindow::onAnalysisTypeChanged);
 
     controlLayout->addStretch();
     analysisLayout->addWidget(controlGroup);
@@ -566,6 +792,9 @@ private:
     analysisResults->setReadOnly(true);
     resultLayout->addWidget(analysisResults);
     analysisLayout->addWidget(resultGroup);
+
+    // 初始化控件可见性
+    onAnalysisTypeChanged(0);
   }
 
   void setupChartTab(QTabWidget *tabWidget) {
@@ -586,6 +815,7 @@ private:
     chartTypeCombo->addItem(QString::fromUtf8("时间序列趋势"), 1);
     chartTypeCombo->addItem(QString::fromUtf8("方向流量对比"), 2);
     chartTypeCombo->addItem(QString::fromUtf8("列车载客率"), 3);
+    chartTypeCombo->addItem(QString::fromUtf8("客流预测图表"), 4);
 
     QPushButton *updateBtn = new QPushButton(QString::fromUtf8("更新图表"));
     updateBtn->setStyleSheet(
@@ -769,14 +999,6 @@ private:
     }
   }
 
-  void updateDisplays() {
-    updateStationList();
-    updateRouteList();
-    updateTrainList();
-    updateInfo();
-    updateChartDisplay();
-  }
-
   void updateStationList() {
     stationTree->clear();
     for (const auto &station : stations) {
@@ -857,6 +1079,10 @@ private:
   QComboBox *chartTypeCombo;
   QChart *chart;
   QChartView *chartView;
+  QLabel *predictionDaysLabel;
+  QComboBox *predictionDaysCombo;
+  QLabel *stationLabel;
+  QComboBox *stationCombo;
 };
 
 int main(int argc, char *argv[]) {
