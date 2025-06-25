@@ -47,6 +47,19 @@ template <> constexpr inline auto RailwayMainWindow::qt_create_metaobjectdata<qt
         "createDirectionCompareChart",
         "createTrainLoadChart",
         "createFlowPredictionChart",
+        "createPassengerHeatMap",
+        "createStationBasedHeatMap",
+        "createSampleHeatMap",
+        "getHeatMapColor",
+        "intensity",
+        "radius",
+        "getStationPosition",
+        "std::string",
+        "stationName",
+        "double&",
+        "x",
+        "y",
+        "createTrainSimulation",
         "exportData",
         "aboutApp",
         "onAnalysisTypeChanged",
@@ -72,18 +85,34 @@ template <> constexpr inline auto RailwayMainWindow::qt_create_metaobjectdata<qt
         QtMocHelpers::SlotData<void()>(8, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'createFlowPredictionChart'
         QtMocHelpers::SlotData<void()>(9, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'exportData'
+        // Slot 'createPassengerHeatMap'
         QtMocHelpers::SlotData<void()>(10, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'aboutApp'
+        // Slot 'createStationBasedHeatMap'
         QtMocHelpers::SlotData<void()>(11, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'createSampleHeatMap'
+        QtMocHelpers::SlotData<void()>(12, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'getHeatMapColor'
+        QtMocHelpers::SlotData<QColor(double, int)>(13, 2, QMC::AccessPrivate, QMetaType::QColor, {{
+            { QMetaType::Double, 14 }, { QMetaType::Int, 15 },
+        }}),
+        // Slot 'getStationPosition'
+        QtMocHelpers::SlotData<void(const std::string &, double &, double &)>(16, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 17, 18 }, { 0x80000000 | 19, 20 }, { 0x80000000 | 19, 21 },
+        }}),
+        // Slot 'createTrainSimulation'
+        QtMocHelpers::SlotData<void()>(22, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'exportData'
+        QtMocHelpers::SlotData<void()>(23, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'aboutApp'
+        QtMocHelpers::SlotData<void()>(24, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'onAnalysisTypeChanged'
-        QtMocHelpers::SlotData<void(int)>(12, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::Int, 13 },
+        QtMocHelpers::SlotData<void(int)>(25, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::Int, 26 },
         }}),
         // Slot 'updateDisplays'
-        QtMocHelpers::SlotData<void()>(14, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(27, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'updateStationCombo'
-        QtMocHelpers::SlotData<void()>(15, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(28, 2, QMC::AccessPrivate, QMetaType::Void),
     };
     QtMocHelpers::UintData qt_properties {
     };
@@ -115,11 +144,18 @@ void RailwayMainWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, in
         case 5: _t->createDirectionCompareChart(); break;
         case 6: _t->createTrainLoadChart(); break;
         case 7: _t->createFlowPredictionChart(); break;
-        case 8: _t->exportData(); break;
-        case 9: _t->aboutApp(); break;
-        case 10: _t->onAnalysisTypeChanged((*reinterpret_cast< std::add_pointer_t<int>>(_a[1]))); break;
-        case 11: _t->updateDisplays(); break;
-        case 12: _t->updateStationCombo(); break;
+        case 8: _t->createPassengerHeatMap(); break;
+        case 9: _t->createStationBasedHeatMap(); break;
+        case 10: _t->createSampleHeatMap(); break;
+        case 11: { QColor _r = _t->getHeatMapColor((*reinterpret_cast< std::add_pointer_t<double>>(_a[1])),(*reinterpret_cast< std::add_pointer_t<int>>(_a[2])));
+            if (_a[0]) *reinterpret_cast< QColor*>(_a[0]) = std::move(_r); }  break;
+        case 12: _t->getStationPosition((*reinterpret_cast< std::add_pointer_t<std::string>>(_a[1])),(*reinterpret_cast< std::add_pointer_t<double&>>(_a[2])),(*reinterpret_cast< std::add_pointer_t<double&>>(_a[3]))); break;
+        case 13: _t->createTrainSimulation(); break;
+        case 14: _t->exportData(); break;
+        case 15: _t->aboutApp(); break;
+        case 16: _t->onAnalysisTypeChanged((*reinterpret_cast< std::add_pointer_t<int>>(_a[1]))); break;
+        case 17: _t->updateDisplays(); break;
+        case 18: _t->updateStationCombo(); break;
         default: ;
         }
     }
@@ -144,14 +180,14 @@ int RailwayMainWindow::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 13)
+        if (_id < 19)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 13;
+        _id -= 19;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 13)
+        if (_id < 19)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 13;
+        _id -= 19;
     }
     return _id;
 }

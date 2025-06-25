@@ -23,7 +23,10 @@
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
+#include <algorithm>
+#include <climits>
 #include <clocale>
+#include <functional>
 #include <locale>
 #include <memory>
 #include <vector>
@@ -35,6 +38,7 @@
 
 #endif
 
+#include <QTime>
 #include <QtCharts/QBarCategoryAxis>
 #include <QtCharts/QBarSeries>
 #include <QtCharts/QBarSet>
@@ -42,6 +46,7 @@
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QPieSeries>
+#include <QtCharts/QScatterSeries>
 #include <QtCharts/QValueAxis>
 
 // Qt Charts classes will be used with full namespace
@@ -266,6 +271,12 @@ private slots:
       break;
     case 4: // 客流预测图表
       createFlowPredictionChart();
+      break;
+    case 5: // 客流热力图
+      createPassengerHeatMap();
+      break;
+    case 6: // 列车运行模拟
+      createTrainSimulation();
       break;
     }
   }
@@ -525,6 +536,377 @@ private slots:
         analysisText += QString::fromUtf8("• 渝→川方向保持稳定\n");
       }
     }
+  }
+
+  void createPassengerHeatMap() {
+    // 创建专业的客流热力图
+
+    // 获取所有站点的客流数据
+    auto stationFlow = passengerFlow.getAllStationsFlow();
+
+    // 调试信息：显示有多少条客流记录
+    int recordCount = passengerFlow.getRecordCount();
+
+    // 强制显示真实数据 - 优先使用所有站点生成热力图
+    if (stationFlow.empty() || recordCount == 0 || stationFlow.size() <= 4) {
+      // 重新生成客流数据
+      generateRealisticFlowData();
+      // 重新获取客流数据
+      stationFlow = passengerFlow.getAllStationsFlow();
+
+      // 如果数据还是太少或为空，直接基于stations列表生成热力图
+      if (stationFlow.empty() || stationFlow.size() <= 4) {
+        createStationBasedHeatMap();
+        return;
+      }
+    }
+
+    // 找到客流的最大值和最小值，用于颜色映射
+    int maxFlow = 0, minFlow = INT_MAX;
+    for (const auto &pair : stationFlow) {
+      maxFlow = std::max(maxFlow, pair.second);
+      minFlow = std::min(minFlow, pair.second);
+    }
+
+    if (maxFlow == minFlow) {
+      maxFlow = minFlow + 1; // 避免除零
+    }
+
+    // 创建热力点 - 使用多个散点图来模拟热力效果
+    std::vector<QScatterSeries *> heatLayers;
+
+    // 为不同强度的热力创建不同的图层
+    for (const auto &pair : stationFlow) {
+      // 计算热力强度 (0-1之间)
+      double intensity =
+          static_cast<double>(pair.second - minFlow) / (maxFlow - minFlow);
+
+      // 为每个站点创建一个热力区域（使用多个同心圆模拟）
+      for (int radius = 5; radius >= 1; radius--) {
+        QScatterSeries *heatLayer = new QScatterSeries();
+        heatLayer->setMarkerSize(radius * 8.0); // 不同半径的圆
+
+        // 根据强度和半径设置颜色
+        QColor color = getHeatMapColor(intensity, radius);
+        heatLayer->setColor(color);
+        heatLayer->setBorderColor(QColor(Qt::transparent));
+
+        // 模拟地理位置 - 基于站点名称生成相对位置
+        double x, y;
+        getStationPosition(pair.first, x, y);
+
+        heatLayer->append(x, y);
+        heatLayers.push_back(heatLayer);
+        chart->addSeries(heatLayer);
+      }
+    }
+
+    // 设置坐标轴
+    QValueAxis *axisX = new QValueAxis();
+    axisX->setRange(103, 107); // 大致覆盖成都-重庆经度范围
+    axisX->setTitleText("Longitude / E");
+    axisX->setLabelFormat("%.1f");
+    chart->addAxis(axisX, Qt::AlignBottom);
+
+    QValueAxis *axisY = new QValueAxis();
+    axisY->setRange(29, 31); // 大致覆盖成都-重庆纬度范围
+    axisY->setTitleText("Latitude / N");
+    axisY->setLabelFormat("%.1f");
+    chart->addAxis(axisY, Qt::AlignLeft);
+
+    // 为所有图层附加坐标轴
+    for (auto layer : heatLayers) {
+      layer->attachAxis(axisX);
+      layer->attachAxis(axisY);
+    }
+
+    chart->setTitle(QString::fromUtf8("川渝地区客流热力分布图 "));
+    chart->legend()->setVisible(false); // 热力图通常不显示图例
+  }
+
+  void createStationBasedHeatMap() {
+    // 直接基于stations列表生成热力图，不依赖客流记录
+
+    if (stations.empty()) {
+      createSampleHeatMap();
+      return;
+    }
+
+    // 为每个站点生成模拟客流量
+    for (const auto &station : stations) {
+      if (!station)
+        continue;
+
+      // 根据站点名称生成不同的客流强度
+      std::string stationName = station->getStationName();
+      int intensity = 100; // 基础强度
+
+      // 主要城市站点客流更高
+      if (stationName.find("成都") != std::string::npos ||
+          stationName.find("重庆") != std::string::npos) {
+        intensity = 200 + (std::hash<std::string>{}(stationName) % 100);
+      } else if (stationName.find("北京") != std::string::npos ||
+                 stationName.find("上海") != std::string::npos ||
+                 stationName.find("广州") != std::string::npos ||
+                 stationName.find("深圳") != std::string::npos) {
+        intensity = 150 + (std::hash<std::string>{}(stationName) % 100);
+      } else {
+        intensity = 50 + (std::hash<std::string>{}(stationName) % 100);
+      }
+
+      // 使用站点的经纬度或估算位置
+      double x, y;
+      if (station->getLatitude() != 0 && station->getLongitude() != 0) {
+        x = station->getLongitude();
+        y = station->getLatitude();
+      } else {
+        getStationPosition(stationName, x, y);
+      }
+
+      // 计算强度 (0-1之间)
+      double intensityNormal = static_cast<double>(intensity - 50) / 250.0;
+      intensityNormal = std::max(0.0, std::min(1.0, intensityNormal));
+
+      // 为每个站点创建热力区域
+      for (int radius = 5; radius >= 1; radius--) {
+        QScatterSeries *heatLayer = new QScatterSeries();
+        heatLayer->setMarkerSize(radius * 10.0);
+
+        QColor color = getHeatMapColor(intensityNormal, radius);
+        heatLayer->setColor(color);
+        heatLayer->setBorderColor(QColor(Qt::transparent));
+
+        heatLayer->append(x, y);
+        chart->addSeries(heatLayer);
+      }
+    }
+
+    // 设置坐标轴
+    QValueAxis *axisX = new QValueAxis();
+    axisX->setRange(103, 107);
+    axisX->setTitleText("Longitude / E");
+    axisX->setLabelFormat("%.1f");
+    chart->addAxis(axisX, Qt::AlignBottom);
+
+    QValueAxis *axisY = new QValueAxis();
+    axisY->setRange(29, 31);
+    axisY->setTitleText("Latitude / N");
+    axisY->setLabelFormat("%.1f");
+    chart->addAxis(axisY, Qt::AlignLeft);
+
+    // 为所有系列附加坐标轴
+    for (auto series : chart->series()) {
+      series->attachAxis(axisX);
+      series->attachAxis(axisY);
+    }
+
+    chart->setTitle(
+        QString::fromUtf8("川渝地区客流热力分布图 - 基于所有站点 (%1个站点)")
+            .arg(stations.size()));
+    chart->legend()->setVisible(false);
+  }
+
+  void createSampleHeatMap() {
+    // 创建示例热力图数据
+    struct HeatPoint {
+      QString name;
+      double x, y;
+      int intensity;
+    };
+
+    std::vector<HeatPoint> sampleData = {
+        {QString::fromUtf8("成都东站"), 104.1, 30.6, 250},
+        {QString::fromUtf8("成都南站"), 104.0, 30.6, 180},
+        {QString::fromUtf8("重庆北站"), 106.5, 29.8, 220},
+        {QString::fromUtf8("重庆西站"), 106.4, 29.5, 160},
+        {QString::fromUtf8("简阳南站"), 104.5, 30.4, 80},
+        {QString::fromUtf8("资阳北站"), 104.8, 30.2, 60},
+        {QString::fromUtf8("内江北站"), 105.1, 29.9, 90},
+        {QString::fromUtf8("隆昌北站"), 105.4, 29.7, 70}};
+
+    int maxFlow = 250, minFlow = 60;
+
+    for (const auto &point : sampleData) {
+      double intensity =
+          static_cast<double>(point.intensity - minFlow) / (maxFlow - minFlow);
+
+      // 为每个站点创建热力区域
+      for (int radius = 4; radius >= 1; radius--) {
+        QScatterSeries *heatLayer = new QScatterSeries();
+        heatLayer->setMarkerSize(radius * 12.0);
+
+        QColor color = getHeatMapColor(intensity, radius);
+        heatLayer->setColor(color);
+        heatLayer->setBorderColor(QColor(Qt::transparent));
+
+        heatLayer->append(point.x, point.y);
+        chart->addSeries(heatLayer);
+      }
+    }
+
+    // 设置坐标轴
+    QValueAxis *axisX = new QValueAxis();
+    axisX->setRange(103.5, 107);
+    axisX->setTitleText("Longitude / E");
+    axisX->setLabelFormat("%.1f");
+    chart->addAxis(axisX, Qt::AlignBottom);
+
+    QValueAxis *axisY = new QValueAxis();
+    axisY->setRange(29.2, 31);
+    axisY->setTitleText("Latitude / N");
+    axisY->setLabelFormat("%.1f");
+    chart->addAxis(axisY, Qt::AlignLeft);
+
+    // 为所有系列附加坐标轴
+    for (auto series : chart->series()) {
+      series->attachAxis(axisX);
+      series->attachAxis(axisY);
+    }
+
+    chart->setTitle(QString::fromUtf8("川渝高铁客流热力分布图"));
+    chart->legend()->setVisible(false);
+  }
+
+  QColor getHeatMapColor(double intensity, int radius) {
+    // 创建热力图颜色映射：蓝色(低) -> 绿色 -> 黄色 -> 红色(高)
+    QColor color;
+
+    // 根据半径调整透明度（中心更不透明，边缘更透明）
+    int alpha = 60 + (5 - radius) * 30; // 60-180的透明度范围
+
+    if (intensity < 0.25) {
+      // 蓝色到青色
+      int blue = 255;
+      int green = static_cast<int>(intensity * 4 * 255);
+      color = QColor(0, green, blue, alpha);
+    } else if (intensity < 0.5) {
+      // 青色到绿色
+      int blue = static_cast<int>((0.5 - intensity) * 4 * 255);
+      int green = 255;
+      color = QColor(0, green, blue, alpha);
+    } else if (intensity < 0.75) {
+      // 绿色到黄色
+      int red = static_cast<int>((intensity - 0.5) * 4 * 255);
+      int green = 255;
+      color = QColor(red, green, 0, alpha);
+    } else {
+      // 黄色到红色
+      int red = 255;
+      int green = static_cast<int>((1.0 - intensity) * 4 * 255);
+      color = QColor(red, green, 0, alpha);
+    }
+
+    return color;
+  }
+
+  void getStationPosition(const std::string &stationName, double &x,
+                          double &y) {
+    // 根据站点名称估算地理位置
+    if (stationName.find("成都") != std::string::npos) {
+      x = 104.0 + (std::hash<std::string>{}(stationName) % 20) * 0.01;
+      y = 30.5 + (std::hash<std::string>{}(stationName) % 20) * 0.01;
+    } else if (stationName.find("重庆") != std::string::npos) {
+      x = 106.4 + (std::hash<std::string>{}(stationName) % 20) * 0.01;
+      y = 29.5 + (std::hash<std::string>{}(stationName) % 20) * 0.01;
+    } else if (stationName.find("简阳") != std::string::npos) {
+      x = 104.5;
+      y = 30.4;
+    } else if (stationName.find("资阳") != std::string::npos) {
+      x = 104.8;
+      y = 30.2;
+    } else {
+      // 其他站点在成都-重庆之间随机分布
+      x = 104.0 + (std::hash<std::string>{}(stationName) % 250) * 0.01;
+      y = 29.5 + (std::hash<std::string>{}(stationName) % 150) * 0.01;
+    }
+  }
+
+  void createTrainSimulation() {
+    // 创建列车运行模拟 - 显示列车在线路上的动态位置
+    QLineSeries *routeSeries = new QLineSeries();
+    routeSeries->setName(QString::fromUtf8("成渝高铁线路"));
+    routeSeries->setColor(QColor("#2c3e50"));
+    routeSeries->setPen(QPen(QColor("#2c3e50"), 3));
+
+    // 模拟成渝高铁线路（成都 -> 重庆）
+    routeSeries->append(0, 0);    // 成都东站
+    routeSeries->append(2, 0.5);  // 成都南站
+    routeSeries->append(4, 1);    // 简阳南站
+    routeSeries->append(6, 1.5);  // 资阳北站
+    routeSeries->append(8, 2);    // 重庆西站
+    routeSeries->append(10, 2.5); // 重庆北站
+
+    chart->addSeries(routeSeries);
+
+    // 创建运行中的列车（使用散点图表示）
+    QScatterSeries *trainSeries = new QScatterSeries();
+    trainSeries->setName(QString::fromUtf8("运行列车"));
+    trainSeries->setMarkerSize(20.0);
+    trainSeries->setColor(QColor("#e74c3c"));
+    trainSeries->setBorderColor(QColor("#c0392b"));
+
+    // 模拟当前时间的列车位置
+    int currentHour = QTime::currentTime().hour();
+    double trainPositions[] = {1.5, 3.8, 6.2, 8.7}; // 4列列车的位置
+
+    for (int i = 0; i < 4; ++i) {
+      double pos =
+          trainPositions[i] + (currentHour % 12) * 0.1; // 根据时间微调位置
+      if (pos > 10)
+        pos = pos - 10; // 循环运行
+
+      double y = 0.25 * (pos / 2.5); // 沿线路的Y坐标
+      trainSeries->append(pos, y);
+    }
+
+    chart->addSeries(trainSeries);
+
+    // 创建车站点
+    QScatterSeries *stationSeries = new QScatterSeries();
+    stationSeries->setName(QString::fromUtf8("车站"));
+    stationSeries->setMarkerSize(15.0);
+    stationSeries->setColor(QColor("#3498db"));
+    stationSeries->setBorderColor(QColor("#2980b9"));
+
+    // 添加主要车站位置
+    stationSeries->append(0, 0);    // 成都东站
+    stationSeries->append(2, 0.5);  // 成都南站
+    stationSeries->append(4, 1);    // 简阳南站
+    stationSeries->append(6, 1.5);  // 资阳北站
+    stationSeries->append(8, 2);    // 重庆西站
+    stationSeries->append(10, 2.5); // 重庆北站
+
+    chart->addSeries(stationSeries);
+
+    // 设置坐标轴
+    QValueAxis *axisX = new QValueAxis();
+    axisX->setRange(-0.5, 10.5);
+    axisX->setTitleText("Railway Distance (km)");
+    axisX->setLabelFormat("%.1f");
+    chart->addAxis(axisX, Qt::AlignBottom);
+    routeSeries->attachAxis(axisX);
+    trainSeries->attachAxis(axisX);
+    stationSeries->attachAxis(axisX);
+
+    QValueAxis *axisY = new QValueAxis();
+    axisY->setRange(-0.5, 3);
+    axisY->setTitleText("Track Direction");
+    axisY->setLabelsVisible(false);
+    chart->addAxis(axisY, Qt::AlignLeft);
+    routeSeries->attachAxis(axisY);
+    trainSeries->attachAxis(axisY);
+    stationSeries->attachAxis(axisY);
+
+    chart->setTitle(QString::fromUtf8("成渝高铁列车运行实时模拟"));
+    chart->legend()->setVisible(true);
+    chart->legend()->setAlignment(Qt::AlignBottom);
+
+    // 添加状态信息文本
+    QString statusText = QString::fromUtf8("当前时间: %1\n")
+                             .arg(QTime::currentTime().toString("hh:mm"));
+    statusText += QString::fromUtf8("运行列车: 4列\n");
+    statusText += QString::fromUtf8("线路状态: 正常运行\n");
+    statusText += QString::fromUtf8("平均速度: 280km/h");
   }
 
   void exportData() {
@@ -856,6 +1238,8 @@ private:
     chartTypeCombo->addItem(QString::fromUtf8("方向流量对比"), 2);
     chartTypeCombo->addItem(QString::fromUtf8("列车载客率"), 3);
     chartTypeCombo->addItem(QString::fromUtf8("客流预测图表"), 4);
+    chartTypeCombo->addItem(QString::fromUtf8("客流热力图"), 5);
+    chartTypeCombo->addItem(QString::fromUtf8("列车运行模拟"), 6);
 
     QPushButton *updateBtn = new QPushButton(QString::fromUtf8("更新图表"));
     updateBtn->setStyleSheet(
@@ -999,42 +1383,39 @@ private:
 
     int recordId = 1;
 
+    // 为所有站点生成客流数据（移除数量限制）
+
     // 为主要站点生成高客流数据
     for (const auto &station : majorStations) {
-      if (station && recordId <= 50) {
-        for (int hour = 7; hour <= 20; hour++) {
-          // 主要站点客流量较大但合理
-          int boarding = 50 + rand() % 100; // 50-150人
-          int alighting = 30 + rand() % 80; // 30-110人
+      if (station) {
+        // 只生成一条记录代表该站点的总客流，避免数据量过大
+        int boarding = 150 + rand() % 200;  // 150-350人
+        int alighting = 100 + rand() % 150; // 100-250人
 
-          std::string trainId = "G" + std::to_string(8500 + recordId % 50);
-          std::string direction = (hour % 2 == 0) ? "川->渝" : "渝->川";
+        std::string trainId = "G" + std::to_string(8500 + recordId % 100);
+        std::string direction = (recordId % 2 == 0) ? "川->渝" : "渝->川";
 
-          passengerFlow.addRecord(
-              FlowRecord("F" + std::to_string(recordId++),
-                         station->getStationId(), station->getStationName(),
-                         today, hour, boarding, alighting, trainId, direction));
-        }
+        passengerFlow.addRecord(
+            FlowRecord("F" + std::to_string(recordId++),
+                       station->getStationId(), station->getStationName(),
+                       today, 12, boarding, alighting, trainId, direction));
       }
     }
 
-    // 为其他站点生成较低的客流数据
+    // 为其他站点生成较低的客流数据（移除150的限制）
     for (const auto &station : otherStations) {
-      if (station && recordId <= 150) {
-        // 只在部分时间段有客流
-        for (int hour = 8; hour <= 18; hour += 2) {
-          // 其他站点客流量较小
-          int boarding = 10 + rand() % 30; // 10-40人
-          int alighting = 5 + rand() % 25; // 5-30人
+      if (station) {
+        // 每个站点生成一条记录
+        int boarding = 20 + rand() % 80;  // 20-100人
+        int alighting = 10 + rand() % 60; // 10-70人
 
-          std::string trainId = "G" + std::to_string(8500 + recordId % 50);
-          std::string direction = (hour % 2 == 0) ? "川->渝" : "渝->川";
+        std::string trainId = "G" + std::to_string(8500 + recordId % 100);
+        std::string direction = (recordId % 2 == 0) ? "川->渝" : "渝->川";
 
-          passengerFlow.addRecord(
-              FlowRecord("F" + std::to_string(recordId++),
-                         station->getStationId(), station->getStationName(),
-                         today, hour, boarding, alighting, trainId, direction));
-        }
+        passengerFlow.addRecord(
+            FlowRecord("F" + std::to_string(recordId++),
+                       station->getStationId(), station->getStationName(),
+                       today, 12, boarding, alighting, trainId, direction));
       }
     }
   }

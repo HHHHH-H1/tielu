@@ -420,6 +420,7 @@ release/main_gui.moc: main_gui.cpp \
 		C:/Qt/6.9.1/mingw_64/include/QtWidgets/qtreewidgetitemiterator.h \
 		C:/Qt/6.9.1/mingw_64/include/QtWidgets/QTreeWidgetItem \
 		C:/Qt/6.9.1/mingw_64/include/QtWidgets/QVBoxLayout \
+		C:/Qt/6.9.1/mingw_64/include/QtCore/QTime \
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/QBarCategoryAxis \
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/qbarcategoryaxis.h \
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/QAbstractAxis \
@@ -466,6 +467,8 @@ release/main_gui.moc: main_gui.cpp \
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/qpieseries.h \
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/QPieSlice \
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/qpieslice.h \
+		C:/Qt/6.9.1/mingw_64/include/QtCharts/QScatterSeries \
+		C:/Qt/6.9.1/mingw_64/include/QtCharts/qscatterseries.h \
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/QValueAxis \
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/qvalueaxis.h \
 		DataAnalyzer.h \
@@ -818,6 +821,7 @@ release/main_gui.o: main_gui.cpp C:/Qt/6.9.1/mingw_64/include/QtWidgets/QApplica
 		C:/Qt/6.9.1/mingw_64/include/QtWidgets/qtreewidgetitemiterator.h \
 		C:/Qt/6.9.1/mingw_64/include/QtWidgets/QTreeWidgetItem \
 		C:/Qt/6.9.1/mingw_64/include/QtWidgets/QVBoxLayout \
+		C:/Qt/6.9.1/mingw_64/include/QtCore/QTime \
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/QBarCategoryAxis \
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/qbarcategoryaxis.h \
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/QAbstractAxis \
@@ -864,6 +868,8 @@ release/main_gui.o: main_gui.cpp C:/Qt/6.9.1/mingw_64/include/QtWidgets/QApplica
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/qpieseries.h \
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/QPieSlice \
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/qpieslice.h \
+		C:/Qt/6.9.1/mingw_64/include/QtCharts/QScatterSeries \
+		C:/Qt/6.9.1/mingw_64/include/QtCharts/qscatterseries.h \
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/QValueAxis \
 		C:/Qt/6.9.1/mingw_64/include/QtCharts/qvalueaxis.h \
 		DataAnalyzer.h \
