@@ -41,7 +41,11 @@ template <> constexpr inline auto RailwayMainWindow::qt_create_metaobjectdata<qt
         "refreshData",
         "",
         "performAnalysis",
-        "updateChart",
+        "updateChartDisplay",
+        "createStationFlowChart",
+        "createTimeSeriesChart",
+        "createDirectionCompareChart",
+        "createTrainLoadChart",
         "exportData",
         "aboutApp"
     };
@@ -51,12 +55,20 @@ template <> constexpr inline auto RailwayMainWindow::qt_create_metaobjectdata<qt
         QtMocHelpers::SlotData<void()>(1, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'performAnalysis'
         QtMocHelpers::SlotData<void()>(3, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'updateChart'
+        // Slot 'updateChartDisplay'
         QtMocHelpers::SlotData<void()>(4, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'exportData'
+        // Slot 'createStationFlowChart'
         QtMocHelpers::SlotData<void()>(5, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'aboutApp'
+        // Slot 'createTimeSeriesChart'
         QtMocHelpers::SlotData<void()>(6, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'createDirectionCompareChart'
+        QtMocHelpers::SlotData<void()>(7, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'createTrainLoadChart'
+        QtMocHelpers::SlotData<void()>(8, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'exportData'
+        QtMocHelpers::SlotData<void()>(9, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'aboutApp'
+        QtMocHelpers::SlotData<void()>(10, 2, QMC::AccessPrivate, QMetaType::Void),
     };
     QtMocHelpers::UintData qt_properties {
     };
@@ -82,9 +94,13 @@ void RailwayMainWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, in
         switch (_id) {
         case 0: _t->refreshData(); break;
         case 1: _t->performAnalysis(); break;
-        case 2: _t->updateChart(); break;
-        case 3: _t->exportData(); break;
-        case 4: _t->aboutApp(); break;
+        case 2: _t->updateChartDisplay(); break;
+        case 3: _t->createStationFlowChart(); break;
+        case 4: _t->createTimeSeriesChart(); break;
+        case 5: _t->createDirectionCompareChart(); break;
+        case 6: _t->createTrainLoadChart(); break;
+        case 7: _t->exportData(); break;
+        case 8: _t->aboutApp(); break;
         default: ;
         }
     }
@@ -110,14 +126,14 @@ int RailwayMainWindow::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 5)
+        if (_id < 9)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 5;
+        _id -= 9;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 5)
+        if (_id < 9)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 5;
+        _id -= 9;
     }
     return _id;
 }

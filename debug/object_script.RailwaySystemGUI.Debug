@@ -6,8 +6,5 @@ debug/DataAnalyzer.o
 debug/FileManager.o
 debug/AdvancedAnalyzer.o
 debug/TimeSeriesAnalyzer.o
-debug/main_gui.o
-debug/MainWindow.o
 debug/ChartWidget.o
-debug/moc_MainWindow.o
-debug/moc_ChartWidget.o
+debug/main_gui.o

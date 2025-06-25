@@ -29,7 +29,7 @@ echo 正在创建Qt项目文件...
 
 REM 创建 .pro 文件
 (
-echo QT += core gui widgets
+echo QT += core gui widgets charts
 echo CONFIG += c++17 console
 echo TEMPLATE = app
 echo TARGET = RailwaySystemGUI

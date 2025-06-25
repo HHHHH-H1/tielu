@@ -35,6 +35,16 @@
 
 #endif
 
+#include <QtCharts/QBarCategoryAxis>
+#include <QtCharts/QBarSeries>
+#include <QtCharts/QBarSet>
+#include <QtCharts/QChart>
+#include <QtCharts/QChartView>
+#include <QtCharts/QLineSeries>
+#include <QtCharts/QPieSeries>
+#include <QtCharts/QValueAxis>
+
+// Qt Charts classes will be used with full namespace
 #include "DataAnalyzer.h"
 #include "FileManager.h"
 #include "PassengerFlow.h"
@@ -117,58 +127,192 @@ private slots:
     statusBar()->showMessage(QString::fromUtf8("分析完成"), 2000);
   }
 
-  void updateChart() {
-    QString chartType = chartTypeCombo->currentText();
-    QString chartText = QString::fromUtf8("图表类型: %1\n").arg(chartType);
-    chartText += "=====================================\n\n";
+  void updateChartDisplay() {
+    if (!chart)
+      return;
 
-    if (chartType == QString::fromUtf8("客流趋势图")) {
-      chartText += QString::fromUtf8("最近7天客流趋势:\n");
-      chartText += QString::fromUtf8("12-09: ████████████████████ 2800人\n");
-      chartText +=
-          QString::fromUtf8("12-10: ████████████████████████ 3200人\n");
-      chartText += QString::fromUtf8("12-11: ██████████████████████ 2900人\n");
-      chartText +=
-          QString::fromUtf8("12-12: ████████████████████████████ 3500人\n");
-      chartText +=
-          QString::fromUtf8("12-13: ██████████████████████████████ 3800人\n");
-      chartText += QString::fromUtf8(
-          "12-14: ████████████████████████████████████ 4200人\n");
-      chartText += QString::fromUtf8(
-          "12-15: ██████████████████████████████████ 3900人\n");
-    } else if (chartType == QString::fromUtf8("站点排行图")) {
-      auto stationFlow = passengerFlow.getAllStationsFlow();
+    // 清除之前的图表
+    chart->removeAllSeries();
+    for (auto axis : chart->axes()) {
+      chart->removeAxis(axis);
+    }
 
-      // 转换为vector以便排序
-      std::vector<std::pair<std::string, int>> ranking;
-      for (const auto &pair : stationFlow) {
-        ranking.push_back(pair);
+    int chartType = chartTypeCombo->currentData().toInt();
+
+    switch (chartType) {
+    case 0: // 站点客流排行
+      createStationFlowChart();
+      break;
+    case 1: // 时间序列趋势
+      createTimeSeriesChart();
+      break;
+    case 2: // 方向对比
+      createDirectionCompareChart();
+      break;
+    case 3: // 列车载客率
+      createTrainLoadChart();
+      break;
+    }
+  }
+
+  void createStationFlowChart() {
+    auto stationFlow = passengerFlow.getAllStationsFlow();
+
+    // 转换为vector并排序
+    std::vector<std::pair<std::string, int>> ranking;
+    for (const auto &pair : stationFlow) {
+      ranking.push_back(pair);
+    }
+
+    std::sort(ranking.begin(), ranking.end(),
+              [](const std::pair<std::string, int> &a,
+                 const std::pair<std::string, int> &b) {
+                return a.second > b.second;
+              });
+
+    // 创建柱状图
+    QBarSeries *series = new QBarSeries();
+    QBarSet *set = new QBarSet(QString::fromUtf8("客流量"));
+    set->setColor(QColor("#007bff"));
+
+    QStringList categories;
+
+    // 只显示前10个站点
+    int count = std::min(10, static_cast<int>(ranking.size()));
+    for (int i = 0; i < count; ++i) {
+      set->append(ranking[i].second);
+      QString stationName = QString::fromStdString(ranking[i].first);
+      if (stationName.length() > 8) {
+        stationName = stationName.left(6) + "...";
       }
+      categories << stationName;
+    }
 
-      // 按流量降序排序
-      std::sort(ranking.begin(), ranking.end(),
-                [](const std::pair<std::string, int> &a,
-                   const std::pair<std::string, int> &b) {
-                  return a.second > b.second;
-                });
+    series->append(set);
+    chart->addSeries(series);
 
-      chartText += QString::fromUtf8("站点客流排行:\n");
-      int rank = 1;
-      for (const auto &pair : ranking) {
-        if (rank > 10)
-          break; // 只显示前10名
-        QString bars =
-            QString::fromUtf8("█").repeated(std::max(1, pair.second / 100));
-        chartText += QString::fromUtf8("%1. %2: %3 %4人\n")
-                         .arg(rank++)
-                         .arg(QString::fromStdString(pair.first))
-                         .arg(bars)
-                         .arg(pair.second);
+    // 设置坐标轴
+    QBarCategoryAxis *axisX = new QBarCategoryAxis();
+    axisX->append(categories);
+    axisX->setLabelsAngle(-45);
+    chart->addAxis(axisX, Qt::AlignBottom);
+    series->attachAxis(axisX);
+
+    QValueAxis *axisY = new QValueAxis();
+    axisY->setRange(0, ranking.empty() ? 100 : ranking[0].second * 1.1);
+    axisY->setLabelFormat("%d");
+    chart->addAxis(axisY, Qt::AlignLeft);
+    series->attachAxis(axisY);
+
+    chart->setTitle(QString::fromUtf8("站点客流量排行（前10名）"));
+    chart->legend()->setVisible(true);
+  }
+
+  void createTimeSeriesChart() {
+    QLineSeries *series = new QLineSeries();
+    series->setName(QString::fromUtf8("每日客流趋势"));
+    series->setColor(QColor("#28a745"));
+
+    // 生成最近7天的数据
+    for (int i = 0; i < 7; ++i) {
+      series->append(i, 2000 + (rand() % 1000));
+    }
+
+    chart->addSeries(series);
+
+    // 设置坐标轴
+    QValueAxis *axisX = new QValueAxis();
+    axisX->setRange(0, 6);
+    axisX->setLabelFormat("%d");
+    axisX->setTitleText(QString::fromUtf8("天数"));
+    chart->addAxis(axisX, Qt::AlignBottom);
+    series->attachAxis(axisX);
+
+    QValueAxis *axisY = new QValueAxis();
+    axisY->setRange(1500, 3500);
+    axisY->setLabelFormat("%d");
+    axisY->setTitleText(QString::fromUtf8("客流量"));
+    chart->addAxis(axisY, Qt::AlignLeft);
+    series->attachAxis(axisY);
+
+    chart->setTitle(QString::fromUtf8("客流趋势图（最近7天）"));
+    chart->legend()->setVisible(true);
+  }
+
+  void createDirectionCompareChart() {
+    Date today(2024, 12, 15);
+    int cd2cq = passengerFlow.getChengduToChongqingFlow(today);
+    int cq2cd = passengerFlow.getChongqingToChengduFlow(today);
+
+    // 创建饼图
+    QPieSeries *series = new QPieSeries();
+
+    auto slice1 = series->append(QString::fromUtf8("川→渝"), cd2cq);
+    slice1->setColor(QColor("#007bff"));
+    slice1->setLabelVisible();
+
+    auto slice2 = series->append(QString::fromUtf8("渝→川"), cq2cd);
+    slice2->setColor(QColor("#28a745"));
+    slice2->setLabelVisible();
+
+    // 突出显示最大的部分
+    if (cd2cq > cq2cd) {
+      slice1->setExploded();
+    } else {
+      slice2->setExploded();
+    }
+
+    chart->addSeries(series);
+    chart->setTitle(QString::fromUtf8("川渝双向流量对比"));
+    chart->legend()->setVisible(true);
+  }
+
+  void createTrainLoadChart() {
+    Date today(2024, 12, 15);
+    auto loadFactors = passengerFlow.getAllTrainsLoadFactor(today);
+
+    QBarSeries *series = new QBarSeries();
+    QBarSet *set = new QBarSet(QString::fromUtf8("载客率 (%)"));
+    set->setColor(QColor("#dc3545"));
+
+    QStringList categories;
+
+    int count = 0;
+    for (const auto &pair : loadFactors) {
+      if (count >= 8)
+        break;
+
+      set->append(pair.second);
+      categories << QString::fromStdString(pair.first);
+      count++;
+    }
+
+    if (count == 0) {
+      // 生成示例数据
+      QStringList trains = {"G8501", "G8502", "G8503", "G8504", "G8505"};
+      for (const auto &train : trains) {
+        set->append(60 + (rand() % 40));
+        categories << train;
       }
     }
 
-    chartDisplay->setText(chartText);
-    statusBar()->showMessage(QString::fromUtf8("图表已更新"), 2000);
+    series->append(set);
+    chart->addSeries(series);
+
+    // 设置坐标轴
+    QBarCategoryAxis *axisX = new QBarCategoryAxis();
+    axisX->append(categories);
+    chart->addAxis(axisX, Qt::AlignBottom);
+    series->attachAxis(axisX);
+
+    QValueAxis *axisY = new QValueAxis();
+    axisY->setRange(0, 100);
+    axisY->setLabelFormat("%.1f%%");
+    chart->addAxis(axisY, Qt::AlignLeft);
+    series->attachAxis(axisY);
+
+    chart->setTitle(QString::fromUtf8("列车载客率分析"));
+    chart->legend()->setVisible(true);
   }
 
   void exportData() {
@@ -430,36 +574,50 @@ private:
 
     QVBoxLayout *chartLayout = new QVBoxLayout(chartTab);
 
-    // 图表控制
-    QGroupBox *chartControlGroup = new QGroupBox(QString::fromUtf8("图表控制"));
-    QHBoxLayout *chartControlLayout = new QHBoxLayout(chartControlGroup);
+    // 图表控制面板
+    QHBoxLayout *controlLayout = new QHBoxLayout();
 
-    chartControlLayout->addWidget(new QLabel(QString::fromUtf8("图表类型:")));
-    chartTypeCombo = new QComboBox;
-    chartTypeCombo->addItems({QString::fromUtf8("客流趋势图"),
-                              QString::fromUtf8("站点排行图"),
-                              QString::fromUtf8("双向流量对比图")});
-    chartControlLayout->addWidget(chartTypeCombo);
+    QLabel *titleLabel = new QLabel(QString::fromUtf8("数据可视化图表"));
+    titleLabel->setStyleSheet(
+        "font-size: 16px; font-weight: bold; color: #2c3e50;");
 
-    QPushButton *updateChartBtn =
-        new QPushButton(QString::fromUtf8("更新图表"));
-    connect(updateChartBtn, &QPushButton::clicked, this,
-            &RailwayMainWindow::updateChart);
-    chartControlLayout->addWidget(updateChartBtn);
+    chartTypeCombo = new QComboBox();
+    chartTypeCombo->addItem(QString::fromUtf8("站点客流排行"), 0);
+    chartTypeCombo->addItem(QString::fromUtf8("时间序列趋势"), 1);
+    chartTypeCombo->addItem(QString::fromUtf8("方向流量对比"), 2);
+    chartTypeCombo->addItem(QString::fromUtf8("列车载客率"), 3);
 
-    chartControlLayout->addStretch();
-    chartLayout->addWidget(chartControlGroup);
+    QPushButton *updateBtn = new QPushButton(QString::fromUtf8("更新图表"));
+    updateBtn->setStyleSheet(
+        "QPushButton { background-color: #007bff; color: white; border: none; "
+        "border-radius: 4px; padding: 8px 16px; font-weight: bold; }"
+        "QPushButton:hover { background-color: #0056b3; }");
 
-    // 图表显示
-    QGroupBox *chartDisplayGroup = new QGroupBox(QString::fromUtf8("图表显示"));
-    QVBoxLayout *chartDisplayLayout = new QVBoxLayout(chartDisplayGroup);
+    controlLayout->addWidget(titleLabel);
+    controlLayout->addStretch();
+    controlLayout->addWidget(new QLabel(QString::fromUtf8("图表类型:")));
+    controlLayout->addWidget(chartTypeCombo);
+    controlLayout->addWidget(updateBtn);
 
-    chartDisplay = new QTextEdit;
-    chartDisplay->setReadOnly(true);
-    chartDisplay->setText(
-        QString::fromUtf8("请选择图表类型并点击'更新图表'按钮"));
-    chartDisplayLayout->addWidget(chartDisplay);
-    chartLayout->addWidget(chartDisplayGroup);
+    chartLayout->addLayout(controlLayout);
+
+    // 创建图表
+    chart = new QChart();
+    chart->setTheme(QChart::ChartThemeBlueIcy);
+    chart->setAnimationOptions(QChart::SeriesAnimations);
+
+    chartView = new QChartView(chart);
+    chartView->setRenderHint(QPainter::Antialiasing);
+    chartView->setStyleSheet(
+        "QChartView { border: 2px solid #dee2e6; border-radius: 8px; "
+        "background-color: white; }");
+
+    chartLayout->addWidget(chartView);
+    chartLayout->setStretchFactor(chartView, 1);
+
+    // 连接更新按钮
+    connect(updateBtn, &QPushButton::clicked, this,
+            &RailwayMainWindow::updateChartDisplay);
   }
 
   void initializeData() {
@@ -616,6 +774,7 @@ private:
     updateRouteList();
     updateTrainList();
     updateInfo();
+    updateChartDisplay();
   }
 
   void updateStationList() {
@@ -696,7 +855,8 @@ private:
   QComboBox *analysisTypeCombo;
   QTextEdit *analysisResults;
   QComboBox *chartTypeCombo;
-  QTextEdit *chartDisplay;
+  QChart *chart;
+  QChartView *chartView;
 };
 
 int main(int argc, char *argv[]) {
