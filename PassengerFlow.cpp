@@ -150,7 +150,12 @@ PassengerFlow::getStationHourlyFlow(const std::string &stationId,
 std::map<std::string, int> PassengerFlow::getAllStationsFlow() const {
   std::map<std::string, int> stationFlow;
   for (const auto &record : records) {
-    stationFlow[record.getStationId()] += record.getTotalFlow();
+    // 使用站点名称而不是站点ID作为键
+    std::string stationKey = record.getStationName();
+    if (stationKey.empty()) {
+      stationKey = record.getStationId(); // 如果没有站点名称，使用ID作为备用
+    }
+    stationFlow[stationKey] += record.getTotalFlow();
   }
   return stationFlow;
 }

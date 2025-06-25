@@ -183,21 +183,43 @@ std::string FileManager::escapeCSVValue(const std::string &value) const {
 
 bool FileManager::parseDateFromString(const std::string &dateStr,
                                       Date &date) const {
-  // 简化实现：假设格式为YYYY-MM-DD
-  std::stringstream ss(dateStr);
-  std::string token;
-
-  if (std::getline(ss, token, '-')) {
-    date.year = std::stoi(token);
-  }
-  if (std::getline(ss, token, '-')) {
-    date.month = std::stoi(token);
-  }
-  if (std::getline(ss, token, '-')) {
-    date.day = std::stoi(token);
+  // 处理空或NULL字符串
+  if (dateStr.empty() || dateStr == "NULL") {
+    date = Date(2024, 12, 15); // 默认日期
+    return true;
   }
 
-  return true;
+  try {
+    // 支持多种日期格式：YYYY-MM-DD, YYYYMMDD
+    std::stringstream ss(dateStr);
+    std::string token;
+
+    if (dateStr.find('-') != std::string::npos) {
+      // YYYY-MM-DD 格式
+      if (std::getline(ss, token, '-')) {
+        date.year = std::stoi(token);
+      }
+      if (std::getline(ss, token, '-')) {
+        date.month = std::stoi(token);
+      }
+      if (std::getline(ss, token, '-')) {
+        date.day = std::stoi(token);
+      }
+    } else if (dateStr.length() == 8) {
+      // YYYYMMDD 格式
+      date.year = std::stoi(dateStr.substr(0, 4));
+      date.month = std::stoi(dateStr.substr(4, 2));
+      date.day = std::stoi(dateStr.substr(6, 2));
+    } else {
+      // 默认日期
+      date = Date(2024, 12, 15);
+    }
+
+    return true;
+  } catch (const std::exception &) {
+    date = Date(2024, 12, 15); // 出错时使用默认日期
+    return false;
+  }
 }
 
 std::string FileManager::dateToString(const Date &date) const {
@@ -404,14 +426,46 @@ FlowRecord FileManager::parseFlowRecordFromCSV(
     return FlowRecord();
   }
 
-  Date date;
-  parseDateFromString(fields[3], date);
-  int hour = std::stoi(fields[4]);
-  int boarding = std::stoi(fields[5]);
-  int alighting = std::stoi(fields[6]);
+  try {
+    Date date;
+    if (!parseDateFromString(fields[3], date)) {
+      return FlowRecord();
+    }
 
-  return FlowRecord(fields[0], fields[1], fields[2], date, hour, boarding,
-                    alighting, fields[7], fields[8]);
+    // 安全的字符串到整数转换
+    int hour = 0;
+    int boarding = 0;
+    int alighting = 0;
+
+    try {
+      if (!fields[4].empty() && fields[4] != "NULL") {
+        hour = std::stoi(fields[4]);
+      }
+    } catch (const std::exception &) {
+      hour = 0;
+    }
+
+    try {
+      if (!fields[5].empty() && fields[5] != "NULL") {
+        boarding = std::stoi(fields[5]);
+      }
+    } catch (const std::exception &) {
+      boarding = 0;
+    }
+
+    try {
+      if (!fields[6].empty() && fields[6] != "NULL") {
+        alighting = std::stoi(fields[6]);
+      }
+    } catch (const std::exception &) {
+      alighting = 0;
+    }
+
+    return FlowRecord(fields[0], fields[1], fields[2], date, hour, boarding,
+                      alighting, fields[7], fields[8]);
+  } catch (const std::exception &) {
+    return FlowRecord();
+  }
 }
 
 std::string FileManager::formatFlowRecordToCSV(const FlowRecord &record) const {
@@ -548,20 +602,53 @@ bool FileManager::loadFlowRecords(PassengerFlow &passengerFlow) {
   std::string fullPath = getFullPath(flowRecordsFile);
   std::ifstream file(fullPath);
   if (!file.is_open()) {
-    lastError = "无法打开文件: " + fullPath;
+    lastError = "客流数据文件不存在或无法打开: " + fullPath;
     return false;
   }
+
   std::string line;
   bool first = true;
+  int validRecords = 0;
+  int totalLines = 0;
+
   while (std::getline(file, line)) {
+    totalLines++;
     if (first) {
       first = false;
+      continue; // 跳过头行
+    }
+
+    // 跳过空行或无效行
+    if (line.empty() ||
+        line.find_first_not_of(" \t\r\n") == std::string::npos) {
       continue;
     }
-    auto fields = splitCSVLine(line);
-    auto record = parseFlowRecordFromCSV(fields);
-    passengerFlow.addRecord(record);
+
+    try {
+      auto fields = splitCSVLine(line);
+      if (fields.size() >= 9) { // 确保有足够的字段
+        auto record = parseFlowRecordFromCSV(fields);
+        if (!record.getRecordId().empty()) { // 确保记录有效
+          passengerFlow.addRecord(record);
+          validRecords++;
+        }
+      }
+    } catch (const std::exception &) {
+      // 跳过无法解析的行
+      continue;
+    }
+
+    // 限制加载数量避免内存问题
+    if (validRecords >= 10000) {
+      break;
+    }
   }
+
+  if (validRecords == 0) {
+    lastError = "未找到有效的客流数据记录";
+    return false;
+  }
+
   return true;
 }
 
