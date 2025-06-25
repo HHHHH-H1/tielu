@@ -7,7 +7,6 @@
 #include <numeric>
 #include <sstream>
 
-
 // Date类方法实现
 std::string Date::toString() const {
   std::ostringstream oss;
@@ -275,9 +274,46 @@ std::vector<int> PassengerFlow::predictFlow(const std::string &stationId,
   }
 
   if (historicalData.empty()) {
-    // 如果没有历史数据，返回默认值
+    // 如果没有历史数据，生成基于站点特征的变化预测值
+
+    // 根据站点ID生成一个基础值（模拟不同站点的客流差异）
+    int baseFlow =
+        50 + (std::hash<std::string>{}(stationId) % 100); // 50-150之间
+
+    // 生成变化的预测值
     for (int i = 0; i < days; ++i) {
-      prediction[i] = 100; // 默认值
+      // 初始化随机数种子（基于站点ID和天数）
+      std::srand(static_cast<unsigned int>(std::hash<std::string>{}(stationId) +
+                                           i + std::time(nullptr)));
+
+      // 基础值 + 趋势
+      double baseValue = baseFlow + i * 2; // 轻微上升趋势
+
+      // 周期性变化
+      double cyclicalFactor = 1.0;
+      int dayOfWeek = i % 7;
+      if (dayOfWeek == 5 || dayOfWeek == 6) {        // 周末
+        cyclicalFactor = 0.6;                        // 周末客流减少40%
+      } else if (dayOfWeek == 0 || dayOfWeek == 4) { // 周一、周五
+        cyclicalFactor = 1.3;                        // 周一周五客流增加30%
+      }
+
+      // 随机波动
+      double randomFactor =
+          1.0 + (std::rand() % 31 - 15) * 0.01; // ±15%随机变化
+
+      // 站点规模因子（基于站点ID模拟大小站差异）
+      double stationSizeFactor =
+          0.5 + (std::hash<std::string>{}(stationId) % 1000) * 0.001; // 0.5-1.5
+
+      // 最终预测值
+      double predictedValue =
+          baseValue * cyclicalFactor * randomFactor * stationSizeFactor;
+
+      // 确保预测值在合理范围内
+      predictedValue = std::max(20.0, std::min(predictedValue, 300.0));
+
+      prediction[i] = static_cast<int>(predictedValue);
     }
     return prediction;
   }
@@ -324,6 +360,10 @@ std::vector<int> PassengerFlow::predictFlow(const std::string &stationId,
 
   // 生成预测值
   for (int i = 0; i < days; ++i) {
+    // 初始化随机数种子（基于站点ID、天数和当前时间）
+    std::srand(static_cast<unsigned int>(std::hash<std::string>{}(stationId) +
+                                         i + std::time(nullptr)));
+
     // 基础值：历史平均 + 趋势
     double baseValue = avgFlow + trend * (historicalData.size() + i);
 
