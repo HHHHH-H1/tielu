@@ -1,8 +1,12 @@
 #include "PassengerFlow.h"
 #include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
 #include <iomanip>
 #include <numeric>
 #include <sstream>
+
 
 // Date类方法实现
 std::string Date::toString() const {

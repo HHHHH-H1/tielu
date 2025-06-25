@@ -435,15 +435,21 @@ private slots:
     QLineSeries *cd2cqSeries = new QLineSeries();
     cd2cqSeries->setName(QString::fromUtf8("川→渝预测"));
     cd2cqSeries->setColor(QColor("#007bff"));
+    cd2cqSeries->setMarkerSize(8.0);
 
     QLineSeries *cq2cdSeries = new QLineSeries();
     cq2cdSeries->setName(QString::fromUtf8("渝→川预测"));
     cq2cdSeries->setColor(QColor("#dc3545"));
+    cq2cdSeries->setMarkerSize(8.0);
+
+    // 初始化随机数种子
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
     // 生成未来7天的预测数据
     auto cd2cqPrediction = passengerFlow.predictDirectionalFlow("川->渝", 7);
     auto cq2cdPrediction = passengerFlow.predictDirectionalFlow("渝->川", 7);
 
+    // 添加预测数据点
     for (int i = 0; i < static_cast<int>(cd2cqPrediction.size()) && i < 7;
          ++i) {
       cd2cqSeries->append(i + 1, cd2cqPrediction[i]);
@@ -462,29 +468,63 @@ private slots:
     axisX->setRange(1, 7);
     axisX->setLabelFormat("%d");
     axisX->setTitleText(QString::fromUtf8("预测天数"));
+    axisX->setTickCount(7);
     chart->addAxis(axisX, Qt::AlignBottom);
     cd2cqSeries->attachAxis(axisX);
     cq2cdSeries->attachAxis(axisX);
 
-    QValueAxis *axisY = new QValueAxis();
-    int maxValue = 0;
-    if (!cd2cqPrediction.empty() || !cq2cdPrediction.empty()) {
-      for (int value : cd2cqPrediction) {
-        maxValue = std::max(maxValue, value);
-      }
-      for (int value : cq2cdPrediction) {
-        maxValue = std::max(maxValue, value);
-      }
+    // 动态计算Y轴范围
+    int minValue = INT_MAX, maxValue = 0;
+    for (int value : cd2cqPrediction) {
+      minValue = std::min(minValue, value);
+      maxValue = std::max(maxValue, value);
     }
-    axisY->setRange(0, maxValue > 0 ? maxValue * 1.1 : 1000);
+    for (int value : cq2cdPrediction) {
+      minValue = std::min(minValue, value);
+      maxValue = std::max(maxValue, value);
+    }
+
+    if (minValue == INT_MAX) {
+      minValue = 0;
+      maxValue = 1000;
+    }
+
+    QValueAxis *axisY = new QValueAxis();
+    axisY->setRange(minValue * 0.9, maxValue * 1.1); // 留出10%的边界
     axisY->setLabelFormat("%d");
-    axisY->setTitleText(QString::fromUtf8("预测客流量"));
+    axisY->setTitleText(QString::fromUtf8("预测客流量（人次）"));
     chart->addAxis(axisY, Qt::AlignLeft);
     cd2cqSeries->attachAxis(axisY);
     cq2cdSeries->attachAxis(axisY);
 
     chart->setTitle(QString::fromUtf8("川渝双向客流预测（未来7天）"));
     chart->legend()->setVisible(true);
+    chart->legend()->setAlignment(Qt::AlignBottom);
+
+    // 添加预测分析文字
+    QString analysisText = QString::fromUtf8("预测趋势分析：\n");
+
+    // 计算趋势
+    if (cd2cqPrediction.size() >= 2 && cq2cdPrediction.size() >= 2) {
+      int cd2cqTrend = cd2cqPrediction.back() - cd2cqPrediction.front();
+      int cq2cdTrend = cq2cdPrediction.back() - cq2cdPrediction.front();
+
+      if (cd2cqTrend > 0) {
+        analysisText += QString::fromUtf8("• 川→渝方向呈上升趋势\n");
+      } else if (cd2cqTrend < 0) {
+        analysisText += QString::fromUtf8("• 川→渝方向呈下降趋势\n");
+      } else {
+        analysisText += QString::fromUtf8("• 川→渝方向保持稳定\n");
+      }
+
+      if (cq2cdTrend > 0) {
+        analysisText += QString::fromUtf8("• 渝→川方向呈上升趋势\n");
+      } else if (cq2cdTrend < 0) {
+        analysisText += QString::fromUtf8("• 渝→川方向呈下降趋势\n");
+      } else {
+        analysisText += QString::fromUtf8("• 渝→川方向保持稳定\n");
+      }
+    }
   }
 
   void exportData() {
