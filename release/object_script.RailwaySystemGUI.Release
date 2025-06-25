@@ -1,0 +1,13 @@
+release/Station.o
+release/Route.o
+release/Train.o
+release/PassengerFlow.o
+release/DataAnalyzer.o
+release/FileManager.o
+release/AdvancedAnalyzer.o
+release/TimeSeriesAnalyzer.o
+release/main_gui.o
+release/MainWindow.o
+release/ChartWidget.o
+release/moc_MainWindow.o
+release/moc_ChartWidget.o

@@ -24,6 +24,7 @@ set(SOURCES
     PassengerFlow.cpp
     DataAnalyzer.cpp
     FileManager.cpp
+    TimeSeriesAnalyzer.cpp
     main.cpp
 )
 
@@ -35,6 +36,7 @@ set(HEADERS
     PassengerFlow.h
     DataAnalyzer.h
     FileManager.h
+    TimeSeriesAnalyzer.h
 )
 
 if(BUILD_GUI)

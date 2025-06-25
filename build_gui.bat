@@ -1,4 +1,8 @@
 @echo off
+chcp 65001 >nul
+set TEMP=D:\Temp
+set TMP=D:\Temp
+
 echo ========================================
 echo    川渝轨道交通系统 - Qt GUI编译脚本
 echo ========================================
@@ -23,44 +27,48 @@ qmake -version
 echo.
 echo 正在创建Qt项目文件...
 
-REM 创建.pro文件
+REM 创建 .pro 文件
 (
-echo QT += core widgets
-echo CONFIG += c++17
-echo TARGET = RailwaySystemGUI
+echo QT += core gui widgets
+echo CONFIG += c++17 console
 echo TEMPLATE = app
+echo TARGET = RailwaySystemGUI
 echo.
-echo SOURCES += \
-echo     Station.cpp \
-echo     Route.cpp \
-echo     Train.cpp \
-echo     PassengerFlow.cpp \
-echo     DataAnalyzer.cpp \
-echo     FileManager.cpp \
-echo     main_gui.cpp
+echo SOURCES += Station.cpp \
+echo            Route.cpp \
+echo            Train.cpp \
+echo            PassengerFlow.cpp \
+echo            DataAnalyzer.cpp \
+echo            FileManager.cpp \
+echo            AdvancedAnalyzer.cpp \
+echo            TimeSeriesAnalyzer.cpp \
+echo            main_gui.cpp
 echo.
-echo HEADERS += \
-echo     Station.h \
-echo     Route.h \
-echo     Train.h \
-echo     PassengerFlow.h \
-echo     DataAnalyzer.h \
-echo     FileManager.h
+echo HEADERS += Station.h \
+echo            Route.h \
+echo            Train.h \
+echo            PassengerFlow.h \
+echo            DataAnalyzer.h \
+echo            FileManager.h \
+echo            AdvancedAnalyzer.h \
+echo            TimeSeriesAnalyzer.h
 echo.
-echo # 设置输出目录
 echo DESTDIR = bin
 echo.
-echo # Windows特定设置
 echo win32 {
-echo     CONFIG += console
-echo     QMAKE_CXXFLAGS += /utf-8
+echo     QMAKE_CXXFLAGS += -finput-charset=UTF-8 -fexec-charset=GBK
+echo     LIBS += -lmingw32
+echo     LIBS += $$[QT_INSTALL_LIBS]/libQt6EntryPoint.a
+echo     LIBS += -lshell32 -lkernel32 -luser32 -lgdi32 -lcomdlg32 -ladvapi32
 echo }
-echo.
-echo # 资源文件
-echo RC_ICONS = icon.ico
 ) > RailwaySystem.pro
 
 echo Qt项目文件已创建: RailwaySystem.pro
+
+REM 清除旧的Makefile和.qmake.cache
+del /f /q Makefile >nul 2>&1
+del /f /q .qmake.stash >nul 2>&1
+del /f /q RailwaySystem.pro.user >nul 2>&1
 
 echo.
 echo 正在生成Makefile...
@@ -74,33 +82,24 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo 正在编译Qt GUI版本...
-mingw32-make
+mingw32-make -f Makefile.Release
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo 编译失败，尝试使用nmake...
-    nmake
-    if %ERRORLEVEL% NEQ 0 (
-        echo.
-        echo 错误: 编译失败
-        echo 请检查Qt安装和编译器设置
-        pause
-        exit /b 1
-    )
+    echo ❌ 编译失败，请检查错误日志
+    pause
+    exit /b 1
 )
 
 echo.
 echo ========================================
-echo          编译成功！
+echo          ✅ 编译成功！
 echo ========================================
 echo.
 echo 可执行文件位置: bin\RailwaySystemGUI.exe
 echo.
-echo 运行方法:
-echo   cd bin
-echo   RailwaySystemGUI.exe
-echo.
 
+REM 运行提示
 if exist "bin\RailwaySystemGUI.exe" (
     echo 是否立即运行程序? (Y/N)
     set /p choice=
@@ -109,7 +108,7 @@ if exist "bin\RailwaySystemGUI.exe" (
         start bin\RailwaySystemGUI.exe
     )
 ) else (
-    echo 警告: 未找到可执行文件
+    echo ⚠️ 警告: 未找到可执行文件，请检查编译输出
 )
 
-pause 
+pause

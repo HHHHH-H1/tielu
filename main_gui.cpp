@@ -3,6 +3,7 @@
 #include <QDate>
 #include <QDateEdit>
 #include <QFileDialog>
+#include <QFont>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -22,9 +23,10 @@
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
+#include <clocale>
+#include <locale>
 #include <memory>
 #include <vector>
-
 
 #include "DataAnalyzer.h"
 #include "FileManager.h"
@@ -32,7 +34,6 @@
 #include "Route.h"
 #include "Station.h"
 #include "Train.h"
-
 
 class RailwayMainWindow : public QMainWindow {
   Q_OBJECT
@@ -49,52 +50,56 @@ private slots:
   void refreshData() {
     initializeData();
     updateDisplays();
-    statusBar()->showMessage("数据已刷新", 2000);
+    statusBar()->showMessage(QString::fromUtf8("数据已刷新"), 2000);
   }
 
   void performAnalysis() {
     QString analysisType = analysisTypeCombo->currentText();
     QString result;
 
-    if (analysisType == "站点客流排行") {
+    if (analysisType == QString::fromUtf8("站点客流排行")) {
       result = QString::fromStdString(passengerFlow.generateStationRanking());
-    } else if (analysisType == "川渝双向流量对比") {
+    } else if (analysisType == QString::fromUtf8("川渝双向流量对比")) {
       Date today(2024, 12, 15);
       int cd2cq = passengerFlow.getChengduToChongqingFlow(today);
       int cq2cd = passengerFlow.getChongqingToChengduFlow(today);
       double ratio = passengerFlow.getFlowRatio();
 
-      result = QString("川渝双向流量分析报告\n"
-                       "=====================================\n"
-                       "川 → 渝: %1 人次\n"
-                       "渝 → 川: %2 人次\n"
-                       "流量比率: %3\n\n"
-                       "分析结论: %4")
-                   .arg(cd2cq)
-                   .arg(cq2cd)
-                   .arg(ratio, 0, 'f', 2)
-                   .arg(ratio > 1.2   ? "成都到重庆方向客流明显高于反向"
-                        : ratio < 0.8 ? "重庆到成都方向客流明显高于反向"
-                                      : "双向客流相对均衡");
+      result =
+          QString::fromUtf8("川渝双向流量分析报告\n"
+                            "=====================================\n"
+                            "川 → 渝: %1 人次\n"
+                            "渝 → 川: %2 人次\n"
+                            "流量比率: %3\n\n"
+                            "分析结论: %4")
+              .arg(cd2cq)
+              .arg(cq2cd)
+              .arg(ratio, 0, 'f', 2)
+              .arg(ratio > 1.2
+                       ? QString::fromUtf8("成都到重庆方向客流明显高于反向")
+                   : ratio < 0.8
+                       ? QString::fromUtf8("重庆到成都方向客流明显高于反向")
+                       : QString::fromUtf8("双向客流相对均衡"));
 
-    } else if (analysisType == "列车载客率分析") {
+    } else if (analysisType == QString::fromUtf8("列车载客率分析")) {
       Date today(2024, 12, 15);
       auto loadFactors = passengerFlow.getAllTrainsLoadFactor(today);
 
-      result = "列车载客率分析报告\n=====================================\n";
+      result = QString::fromUtf8(
+          "列车载客率分析报告\n=====================================\n");
       for (const auto &pair : loadFactors) {
         QString status;
         if (pair.second > 90) {
-          status = "严重超载";
+          status = QString::fromUtf8("严重超载");
         } else if (pair.second > 80) {
-          status = "高负荷运行";
+          status = QString::fromUtf8("高负荷运行");
         } else if (pair.second > 60) {
-          status = "正常运行";
+          status = QString::fromUtf8("正常运行");
         } else {
-          status = "低负荷运行";
+          status = QString::fromUtf8("低负荷运行");
         }
 
-        result += QString("列车 %1: %2% - %3\n")
+        result += QString::fromUtf8("列车 %1: %2% - %3\n")
                       .arg(QString::fromStdString(pair.first))
                       .arg(pair.second, 0, 'f', 1)
                       .arg(status);
@@ -102,30 +107,35 @@ private slots:
     }
 
     analysisResults->setText(result);
-    statusBar()->showMessage("分析完成", 2000);
+    statusBar()->showMessage(QString::fromUtf8("分析完成"), 2000);
   }
 
   void updateChart() {
     QString chartType = chartTypeCombo->currentText();
-    QString chartText = QString("图表类型: %1\n").arg(chartType);
+    QString chartText = QString::fromUtf8("图表类型: %1\n").arg(chartType);
     chartText += "=====================================\n\n";
 
-    if (chartType == "客流趋势图") {
-      chartText += "最近7天客流趋势:\n";
-      chartText += "12-09: ████████████████████ 2800人\n";
-      chartText += "12-10: ████████████████████████ 3200人\n";
-      chartText += "12-11: ██████████████████████ 2900人\n";
-      chartText += "12-12: ████████████████████████████ 3500人\n";
-      chartText += "12-13: ██████████████████████████████ 3800人\n";
-      chartText += "12-14: ████████████████████████████████████ 4200人\n";
-      chartText += "12-15: ██████████████████████████████████ 3900人\n";
-    } else if (chartType == "站点排行图") {
+    if (chartType == QString::fromUtf8("客流趋势图")) {
+      chartText += QString::fromUtf8("最近7天客流趋势:\n");
+      chartText += QString::fromUtf8("12-09: ████████████████████ 2800人\n");
+      chartText +=
+          QString::fromUtf8("12-10: ████████████████████████ 3200人\n");
+      chartText += QString::fromUtf8("12-11: ██████████████████████ 2900人\n");
+      chartText +=
+          QString::fromUtf8("12-12: ████████████████████████████ 3500人\n");
+      chartText +=
+          QString::fromUtf8("12-13: ██████████████████████████████ 3800人\n");
+      chartText += QString::fromUtf8(
+          "12-14: ████████████████████████████████████ 4200人\n");
+      chartText += QString::fromUtf8(
+          "12-15: ██████████████████████████████████ 3900人\n");
+    } else if (chartType == QString::fromUtf8("站点排行图")) {
       auto stationFlow = passengerFlow.getAllStationsFlow();
-      chartText += "站点客流排行:\n";
+      chartText += QString::fromUtf8("站点客流排行:\n");
       int rank = 1;
       for (const auto &pair : stationFlow) {
-        QString bars(pair.second / 10, '█');
-        chartText += QString("%1. %2: %3 %4人\n")
+        QString bars = QString::fromUtf8("█").repeated(pair.second / 10);
+        chartText += QString::fromUtf8("%1. %2: %3 %4人\n")
                          .arg(rank++)
                          .arg(QString::fromStdString(pair.first))
                          .arg(bars)
@@ -134,37 +144,43 @@ private slots:
     }
 
     chartDisplay->setText(chartText);
-    statusBar()->showMessage("图表已更新", 2000);
+    statusBar()->showMessage(QString::fromUtf8("图表已更新"), 2000);
   }
 
   void exportData() {
     QString fileName =
-        QFileDialog::getSaveFileName(this, "导出数据", "", "CSV文件 (*.csv)");
+        QFileDialog::getSaveFileName(this, QString::fromUtf8("导出数据"), "",
+                                     QString::fromUtf8("CSV文件 (*.csv)"));
     if (!fileName.isEmpty()) {
       if (fileManager.exportAllData(stations, routes, trains, passengerFlow)) {
-        QMessageBox::information(this, "成功", "数据导出成功！");
+        QMessageBox::information(this, QString::fromUtf8("成功"),
+                                 QString::fromUtf8("数据导出成功！"));
       } else {
-        QMessageBox::warning(this, "错误", "数据导出失败！");
+        QMessageBox::warning(this, QString::fromUtf8("错误"),
+                             QString::fromUtf8("数据导出失败！"));
       }
     }
   }
 
   void aboutApp() {
-    QMessageBox::about(this, "关于系统",
-                       "川渝地区轨道交通客流数据分析与展示系统\n\n"
-                       "版本: 1.0\n"
-                       "开发平台: Qt6 + C++17\n"
-                       "功能特性:\n"
-                       "• 客流数据管理\n"
-                       "• 多维度分析\n"
-                       "• 可视化展示\n"
-                       "• 预测功能\n"
-                       "• 报告生成");
+    QString aboutText =
+        QString::fromUtf8("川渝地区轨道交通客流数据分析与展示系统\n\n");
+    aboutText += QString::fromUtf8("版本: 1.0\n");
+    aboutText += QString::fromUtf8("开发平台: Qt6 + C++17\n");
+    aboutText += QString::fromUtf8("功能特性:\n");
+    aboutText += QString::fromUtf8("客流数据管理\n");
+    aboutText += QString::fromUtf8("多维度分析\n");
+    aboutText += QString::fromUtf8("可视化展示\n");
+    aboutText += QString::fromUtf8("预测功能\n");
+    aboutText += QString::fromUtf8("报告生成");
+
+    QMessageBox::about(this, QString::fromUtf8("关于系统"), aboutText);
   }
 
 private:
   void setupUI() {
-    setWindowTitle("川渝地区轨道交通客流数据分析与展示系统 v1.0");
+    setWindowTitle(
+        QString::fromUtf8("川渝地区轨道交通客流数据分析与展示系统 v1.0"));
     setMinimumSize(1200, 800);
     resize(1400, 900);
 
@@ -178,7 +194,8 @@ private:
     QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
 
     // 标题
-    QLabel *titleLabel = new QLabel("川渝地区轨道交通客流数据分析与展示系统");
+    QLabel *titleLabel =
+        new QLabel(QString::fromUtf8("川渝地区轨道交通客流数据分析与展示系统"));
     titleLabel->setAlignment(Qt::AlignCenter);
     titleLabel->setStyleSheet(
         "font-size: 20px; font-weight: bold; color: #2c3e50; margin: 10px;");
@@ -194,7 +211,7 @@ private:
     mainLayout->addWidget(tabWidget);
 
     // 创建状态栏
-    statusBar()->showMessage("系统就绪");
+    statusBar()->showMessage(QString::fromUtf8("系统就绪"));
 
     // 应用样式
     setStyleSheet(R"(
@@ -258,33 +275,34 @@ private:
     QMenuBar *menuBar = this->menuBar();
 
     // 文件菜单
-    QMenu *fileMenu = menuBar->addMenu("文件");
+    QMenu *fileMenu = menuBar->addMenu(QString::fromUtf8("文件"));
 
-    QAction *refreshAction = fileMenu->addAction("刷新数据");
+    QAction *refreshAction = fileMenu->addAction(QString::fromUtf8("刷新数据"));
     connect(refreshAction, &QAction::triggered, this,
             &RailwayMainWindow::refreshData);
 
     fileMenu->addSeparator();
 
-    QAction *exportAction = fileMenu->addAction("导出数据...");
+    QAction *exportAction =
+        fileMenu->addAction(QString::fromUtf8("导出数据..."));
     connect(exportAction, &QAction::triggered, this,
             &RailwayMainWindow::exportData);
 
     fileMenu->addSeparator();
 
-    QAction *exitAction = fileMenu->addAction("退出");
+    QAction *exitAction = fileMenu->addAction(QString::fromUtf8("退出"));
     connect(exitAction, &QAction::triggered, this, &QWidget::close);
 
     // 帮助菜单
-    QMenu *helpMenu = menuBar->addMenu("帮助");
-    QAction *aboutAction = helpMenu->addAction("关于");
+    QMenu *helpMenu = menuBar->addMenu(QString::fromUtf8("帮助"));
+    QAction *aboutAction = helpMenu->addAction(QString::fromUtf8("关于"));
     connect(aboutAction, &QAction::triggered, this,
             &RailwayMainWindow::aboutApp);
   }
 
   void setupDataTab(QTabWidget *tabWidget) {
     QWidget *dataTab = new QWidget;
-    tabWidget->addTab(dataTab, "数据管理");
+    tabWidget->addTab(dataTab, QString::fromUtf8("数据管理"));
 
     QHBoxLayout *dataLayout = new QHBoxLayout(dataTab);
 
@@ -294,20 +312,24 @@ private:
     QVBoxLayout *leftLayout = new QVBoxLayout(leftPanel);
 
     // 站点信息
-    QGroupBox *stationGroup = new QGroupBox("站点信息");
+    QGroupBox *stationGroup = new QGroupBox(QString::fromUtf8("站点信息"));
     QVBoxLayout *stationLayout = new QVBoxLayout(stationGroup);
 
     stationTree = new QTreeWidget;
-    stationTree->setHeaderLabels({"站点名称", "编号", "城市", "类型"});
+    stationTree->setHeaderLabels(
+        {QString::fromUtf8("站点名称"), QString::fromUtf8("编号"),
+         QString::fromUtf8("城市"), QString::fromUtf8("类型")});
     stationLayout->addWidget(stationTree);
     leftLayout->addWidget(stationGroup);
 
     // 线路信息
-    QGroupBox *routeGroup = new QGroupBox("线路信息");
+    QGroupBox *routeGroup = new QGroupBox(QString::fromUtf8("线路信息"));
     QVBoxLayout *routeLayout = new QVBoxLayout(routeGroup);
 
     routeTree = new QTreeWidget;
-    routeTree->setHeaderLabels({"线路名称", "编号", "类型", "总长"});
+    routeTree->setHeaderLabels(
+        {QString::fromUtf8("线路名称"), QString::fromUtf8("编号"),
+         QString::fromUtf8("类型"), QString::fromUtf8("总长")});
     routeLayout->addWidget(routeTree);
     leftLayout->addWidget(routeGroup);
 
@@ -318,18 +340,20 @@ private:
     QVBoxLayout *rightLayout = new QVBoxLayout(rightPanel);
 
     // 列车信息
-    QGroupBox *trainGroup = new QGroupBox("列车信息");
+    QGroupBox *trainGroup = new QGroupBox(QString::fromUtf8("列车信息"));
     QVBoxLayout *trainLayout = new QVBoxLayout(trainGroup);
 
     trainTable = new QTableWidget;
     trainTable->setColumnCount(4);
-    trainTable->setHorizontalHeaderLabels({"列车号", "类型", "线路", "载客量"});
+    trainTable->setHorizontalHeaderLabels(
+        {QString::fromUtf8("列车号"), QString::fromUtf8("类型"),
+         QString::fromUtf8("线路"), QString::fromUtf8("载客量")});
     trainTable->horizontalHeader()->setStretchLastSection(true);
     trainLayout->addWidget(trainTable);
     rightLayout->addWidget(trainGroup);
 
     // 详细信息
-    QGroupBox *infoGroup = new QGroupBox("详细信息");
+    QGroupBox *infoGroup = new QGroupBox(QString::fromUtf8("详细信息"));
     QVBoxLayout *infoLayout = new QVBoxLayout(infoGroup);
 
     infoDisplay = new QTextEdit;
@@ -343,21 +367,22 @@ private:
 
   void setupAnalysisTab(QTabWidget *tabWidget) {
     QWidget *analysisTab = new QWidget;
-    tabWidget->addTab(analysisTab, "数据分析");
+    tabWidget->addTab(analysisTab, QString::fromUtf8("数据分析"));
 
     QVBoxLayout *analysisLayout = new QVBoxLayout(analysisTab);
 
     // 控制面板
-    QGroupBox *controlGroup = new QGroupBox("分析控制");
+    QGroupBox *controlGroup = new QGroupBox(QString::fromUtf8("分析控制"));
     QHBoxLayout *controlLayout = new QHBoxLayout(controlGroup);
 
-    controlLayout->addWidget(new QLabel("分析类型:"));
+    controlLayout->addWidget(new QLabel(QString::fromUtf8("分析类型:")));
     analysisTypeCombo = new QComboBox;
-    analysisTypeCombo->addItems(
-        {"站点客流排行", "川渝双向流量对比", "列车载客率分析"});
+    analysisTypeCombo->addItems({QString::fromUtf8("站点客流排行"),
+                                 QString::fromUtf8("川渝双向流量对比"),
+                                 QString::fromUtf8("列车载客率分析")});
     controlLayout->addWidget(analysisTypeCombo);
 
-    QPushButton *analyzeBtn = new QPushButton("开始分析");
+    QPushButton *analyzeBtn = new QPushButton(QString::fromUtf8("开始分析"));
     connect(analyzeBtn, &QPushButton::clicked, this,
             &RailwayMainWindow::performAnalysis);
     controlLayout->addWidget(analyzeBtn);
@@ -366,7 +391,7 @@ private:
     analysisLayout->addWidget(controlGroup);
 
     // 结果显示
-    QGroupBox *resultGroup = new QGroupBox("分析结果");
+    QGroupBox *resultGroup = new QGroupBox(QString::fromUtf8("分析结果"));
     QVBoxLayout *resultLayout = new QVBoxLayout(resultGroup);
 
     analysisResults = new QTextEdit;
@@ -377,20 +402,23 @@ private:
 
   void setupChartTab(QTabWidget *tabWidget) {
     QWidget *chartTab = new QWidget;
-    tabWidget->addTab(chartTab, "可视化图表");
+    tabWidget->addTab(chartTab, QString::fromUtf8("可视化图表"));
 
     QVBoxLayout *chartLayout = new QVBoxLayout(chartTab);
 
     // 图表控制
-    QGroupBox *chartControlGroup = new QGroupBox("图表控制");
+    QGroupBox *chartControlGroup = new QGroupBox(QString::fromUtf8("图表控制"));
     QHBoxLayout *chartControlLayout = new QHBoxLayout(chartControlGroup);
 
-    chartControlLayout->addWidget(new QLabel("图表类型:"));
+    chartControlLayout->addWidget(new QLabel(QString::fromUtf8("图表类型:")));
     chartTypeCombo = new QComboBox;
-    chartTypeCombo->addItems({"客流趋势图", "站点排行图", "双向流量对比图"});
+    chartTypeCombo->addItems({QString::fromUtf8("客流趋势图"),
+                              QString::fromUtf8("站点排行图"),
+                              QString::fromUtf8("双向流量对比图")});
     chartControlLayout->addWidget(chartTypeCombo);
 
-    QPushButton *updateChartBtn = new QPushButton("更新图表");
+    QPushButton *updateChartBtn =
+        new QPushButton(QString::fromUtf8("更新图表"));
     connect(updateChartBtn, &QPushButton::clicked, this,
             &RailwayMainWindow::updateChart);
     chartControlLayout->addWidget(updateChartBtn);
@@ -399,12 +427,13 @@ private:
     chartLayout->addWidget(chartControlGroup);
 
     // 图表显示
-    QGroupBox *chartDisplayGroup = new QGroupBox("图表显示");
+    QGroupBox *chartDisplayGroup = new QGroupBox(QString::fromUtf8("图表显示"));
     QVBoxLayout *chartDisplayLayout = new QVBoxLayout(chartDisplayGroup);
 
     chartDisplay = new QTextEdit;
     chartDisplay->setReadOnly(true);
-    chartDisplay->setText("请选择图表类型并点击'更新图表'按钮");
+    chartDisplay->setText(
+        QString::fromUtf8("请选择图表类型并点击'更新图表'按钮"));
     chartDisplayLayout->addWidget(chartDisplay);
     chartLayout->addWidget(chartDisplayGroup);
   }
@@ -447,18 +476,24 @@ private:
 
     // 创建示例客流数据
     Date today(2024, 12, 15);
-    passengerFlow.addRecord(FlowRecord("F001", "CD001", "成都东站", today, 8,
-                                       350, 120, "G8501", "川->渝"));
-    passengerFlow.addRecord(FlowRecord("F002", "CD001", "成都东站", today, 9,
-                                       420, 80, "G8503", "川->渝"));
-    passengerFlow.addRecord(FlowRecord("F003", "CD001", "成都东站", today, 11,
-                                       180, 280, "G8502", "渝->川"));
-    passengerFlow.addRecord(FlowRecord("F004", "CQ001", "重庆北站", today, 9,
-                                       380, 150, "G8502", "渝->川"));
-    passengerFlow.addRecord(FlowRecord("F005", "CQ001", "重庆北站", today, 10,
-                                       200, 320, "G8501", "川->渝"));
-    passengerFlow.addRecord(FlowRecord("F006", "CQ001", "重庆北站", today, 15,
-                                       450, 90, "G8504", "渝->川"));
+    passengerFlow.addRecord(FlowRecord("F001", "CD001", std::string("成都东站"),
+                                       today, 8, 350, 120, "G8501",
+                                       std::string("川->渝")));
+    passengerFlow.addRecord(FlowRecord("F002", "CD001", std::string("成都东站"),
+                                       today, 9, 420, 80, "G8503",
+                                       std::string("川->渝")));
+    passengerFlow.addRecord(FlowRecord("F003", "CD001", std::string("成都东站"),
+                                       today, 11, 180, 280, "G8502",
+                                       std::string("渝->川")));
+    passengerFlow.addRecord(FlowRecord("F004", "CQ001", std::string("重庆北站"),
+                                       today, 9, 380, 150, "G8502",
+                                       std::string("渝->川")));
+    passengerFlow.addRecord(FlowRecord("F005", "CQ001", std::string("重庆北站"),
+                                       today, 10, 200, 320, "G8501",
+                                       std::string("川->渝")));
+    passengerFlow.addRecord(FlowRecord("F006", "CQ001", std::string("重庆北站"),
+                                       today, 15, 450, 90, "G8504",
+                                       std::string("渝->川")));
   }
 
   void updateDisplays() {
@@ -511,7 +546,7 @@ private:
                                 trains[i]->getRoute()
                                     ? QString::fromStdString(
                                           trains[i]->getRoute()->getRouteName())
-                                    : "无"));
+                                    : QString::fromUtf8("无")));
         trainTable->setItem(static_cast<int>(i), 3,
                             new QTableWidgetItem(QString::number(
                                 trains[i]->getTotalCapacity())));
@@ -520,11 +555,12 @@ private:
   }
 
   void updateInfo() {
-    QString info = QString("系统状态信息\n==================\n");
-    info += QString("站点数量: %1\n").arg(stations.size());
-    info += QString("线路数量: %1\n").arg(routes.size());
-    info += QString("列车数量: %1\n").arg(trains.size());
-    info += QString("客流记录: %1\n").arg(passengerFlow.getRecordCount());
+    QString info = QString::fromUtf8("系统状态信息\n==================\n");
+    info += QString::fromUtf8("站点数量: %1\n").arg(stations.size());
+    info += QString::fromUtf8("线路数量: %1\n").arg(routes.size());
+    info += QString::fromUtf8("列车数量: %1\n").arg(trains.size());
+    info +=
+        QString::fromUtf8("客流记录: %1\n").arg(passengerFlow.getRecordCount());
 
     infoDisplay->setText(info);
   }
@@ -551,8 +587,15 @@ private:
 int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
 
+  // 设置系统locale
+  std::setlocale(LC_ALL, "");
+
+  // 设置Qt字体
+  QFont font("Microsoft YaHei", 9);
+  app.setFont(font);
+
   // 设置应用程序信息
-  app.setApplicationName("川渝轨道交通客流分析系统");
+  app.setApplicationName(QString::fromUtf8("川渝轨道交通客流分析系统"));
   app.setApplicationVersion("1.0");
 
   // 创建并显示主窗口

@@ -5,11 +5,12 @@
 #include "Route.h"
 #include "Station.h"
 #include "Train.h"
+#include <algorithm>
+#include <cmath>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
-
 
 // 分析结果结构
 struct AnalysisResult {
@@ -31,6 +32,34 @@ struct ChartData {
 
   ChartData(const std::string &type = "bar", const std::string &t = "")
       : chartType(type), title(t), unit("人次") {}
+};
+
+// 聚类结果结构
+struct ClusterResult {
+  std::vector<std::vector<std::string>> clusters;        // 聚类结果
+  std::vector<std::pair<std::string, double>> centroids; // 聚类中心
+  double silhouetteScore;                                // 轮廓系数
+  std::string description;                               // 聚类描述
+
+  ClusterResult() : silhouetteScore(0.0) {}
+};
+
+// 时间序列预测结果
+struct TimeSeriesForecast {
+  std::vector<double> predictions; // 预测值
+  std::vector<double> upperBound;  // 置信区间上界
+  std::vector<double> lowerBound;  // 置信区间下界
+  double mape;                     // 平均绝对百分比误差
+  std::string method;              // 预测方法
+
+  TimeSeriesForecast() : mape(0.0) {}
+};
+
+// 站点关联性分析结果
+struct StationCorrelation {
+  std::map<std::pair<std::string, std::string>, double> correlationMatrix;
+  std::vector<std::pair<std::string, std::string>> stronglyCorrelated;
+  std::string recommendation;
 };
 
 class DataAnalyzer {
@@ -93,6 +122,53 @@ public:
   ChartData generatePredictionChart(const std::string &stationId,
                                     int days = 3) const;
 
+  // ========== 新增高级算法功能 ==========
+
+  // 高级时间序列预测
+  TimeSeriesForecast forecastARIMA(const std::string &stationId, int days = 7,
+                                   int p = 1, int d = 1, int q = 1) const;
+  TimeSeriesForecast forecastExponentialSmoothing(const std::string &stationId,
+                                                  int days = 7,
+                                                  double alpha = 0.3) const;
+  TimeSeriesForecast forecastSeasonalDecomposition(const std::string &stationId,
+                                                   int days = 7,
+                                                   int seasonPeriod = 7) const;
+  AnalysisResult compareTimeSeriesMethods(const std::string &stationId,
+                                          int days = 7) const;
+
+  // 聚类分析
+  ClusterResult
+  clusterStationsByFlow(int k = 3, const std::string &method = "kmeans") const;
+  ClusterResult clusterByTravelPatterns(int k = 4) const;
+  ClusterResult clusterByTimePatterns(int k = 5) const;
+  AnalysisResult
+  analyzeClusterCharacteristics(const ClusterResult &result) const;
+
+  // 客流时空分布规律挖掘
+  AnalysisResult mineTemporalPatterns() const;
+  AnalysisResult mineSpatialPatterns() const;
+  AnalysisResult mineSpatio_TemporalPatterns() const;
+  AnalysisResult identifyFlowAnomalies() const;
+
+  // 站点关联性分析
+  StationCorrelation analyzeStationCorrelations() const;
+  AnalysisResult analyzeTransferEfficiency() const;
+  AnalysisResult optimizeTransferGuidance() const;
+  AnalysisResult analyzeNetworkResilience() const;
+
+  // 模型验证与评估
+  AnalysisResult validatePredictionModel(const std::string &method,
+                                         int testDays = 3) const;
+  AnalysisResult crossValidateModels() const;
+  AnalysisResult calculateModelAccuracy() const;
+  AnalysisResult generateModelPerformanceReport() const;
+
+  // 数据驱动决策支持
+  AnalysisResult generateCapacityOptimization() const;
+  AnalysisResult generateScheduleOptimization() const;
+  AnalysisResult generateServiceRecommendations() const;
+  AnalysisResult generateInvestmentPriorities() const;
+
   // 综合分析
   AnalysisResult generateDailyReport(const Date &date) const;
   AnalysisResult generateWeeklyReport(const Date &startDate) const;
@@ -129,6 +205,35 @@ public:
   std::shared_ptr<Station> findStation(const std::string &stationId) const;
   std::shared_ptr<Route> findRoute(const std::string &routeId) const;
   std::shared_ptr<Train> findTrain(const std::string &trainId) const;
+
+private:
+  // 高级算法私有辅助方法
+  std::vector<double> getStationTimeSeriesData(const std::string &stationId,
+                                               int days = 30) const;
+  std::vector<double> calculateMovingAverage(const std::vector<double> &data,
+                                             int window) const;
+  std::vector<double>
+  calculateExponentialSmoothing(const std::vector<double> &data,
+                                double alpha) const;
+  double calculateMAPE(const std::vector<double> &actual,
+                       const std::vector<double> &predicted) const;
+  double calculateCorrelation(const std::vector<double> &x,
+                              const std::vector<double> &y) const;
+
+  // K-means聚类实现
+  std::vector<std::vector<double>> extractStationFeatures() const;
+  ClusterResult performKMeans(const std::vector<std::vector<double>> &data,
+                              int k, int maxIterations = 100) const;
+  double calculateSilhouetteScore(const std::vector<std::vector<double>> &data,
+                                  const std::vector<int> &labels) const;
+
+  // ARIMA模型辅助方法
+  std::vector<double> differenceData(const std::vector<double> &data,
+                                     int d) const;
+  std::vector<double> calculateAutocorrelation(const std::vector<double> &data,
+                                               int maxLag) const;
+  TimeSeriesForecast fitARIMA(const std::vector<double> &data, int p, int d,
+                              int q, int forecastSteps) const;
 };
 
 #endif // DATAANALYZER_H
