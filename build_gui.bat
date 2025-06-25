@@ -56,7 +56,7 @@ echo.
 echo DESTDIR = bin
 echo.
 echo win32 {
-echo     QMAKE_CXXFLAGS += -finput-charset=UTF-8 -fexec-charset=GBK
+echo     QMAKE_CXXFLAGS += -finput-charset=UTF-8 -fexec-charset=UTF-8
 echo     LIBS += -lmingw32
 echo     LIBS += $$[QT_INSTALL_LIBS]/libQt6EntryPoint.a
 echo     LIBS += -lshell32 -lkernel32 -luser32 -lgdi32 -lcomdlg32 -ladvapi32

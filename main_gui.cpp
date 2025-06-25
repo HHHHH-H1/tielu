@@ -28,6 +28,13 @@
 #include <memory>
 #include <vector>
 
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#include <windows.h>
+
+#endif
+
 #include "DataAnalyzer.h"
 #include "FileManager.h"
 #include "PassengerFlow.h"
@@ -40,7 +47,7 @@ class RailwayMainWindow : public QMainWindow {
 
 public:
   RailwayMainWindow(QWidget *parent = nullptr)
-      : QMainWindow(parent), fileManager("data") {
+      : QMainWindow(parent), fileManager("data_utf8") {
     setupUI();
     initializeData();
     updateDisplays();
@@ -439,10 +446,22 @@ private:
   }
 
   void initializeData() {
-    if (!fileManager.importAllData(stations, routes, trains, passengerFlow)) {
+    // 尝试从CSV文件加载实际数据
+    stations = fileManager.loadStations();
+    routes = fileManager.loadRoutes(stations);
+    trains = fileManager.loadTrains(routes);
+
+    // 如果加载失败或数据为空，使用示例数据
+    if (stations.empty()) {
       initSampleData();
-      fileManager.exportAllData(stations, routes, trains, passengerFlow);
     }
+
+    statusBar()->showMessage(
+        QString::fromUtf8("已加载 %1 个站点, %2 条线路, %3 列列车")
+            .arg(stations.size())
+            .arg(routes.size())
+            .arg(trains.size()),
+        3000);
   }
 
   void initSampleData() {
@@ -587,8 +606,8 @@ private:
 int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
 
-  // 设置系统locale
-  std::setlocale(LC_ALL, "");
+  // 设置系统locale和编码
+  std::setlocale(LC_ALL, "zh_CN.UTF-8");
 
   // 设置Qt字体
   QFont font("Microsoft YaHei", 9);

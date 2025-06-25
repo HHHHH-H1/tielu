@@ -1,27 +1,31 @@
 #include "FileManager.h"
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <algorithm>
 
 // 构造函数
 FileManager::FileManager() : dataDirectory("data") {
   stationsFile = "客运站点（站点名称、站点编号、备注）.csv";
-  routesFile =
-      "运营线路客运站（运营线路编码、站点id、线路站点id、上一站id、运营线路站间距离 、下一站id、运输距离、线路代码）.csv";
+  routesFile = "运营线路客运站（运营线路编码、站点id、线路站点id、上一站id、运"
+               "营线路站间距离 、下一站id、运输距离、线路代码）.csv";
   trainsFile = "列车表（列车编码、列车代码、列车运量）.csv";
   flowRecordsFile =
-      "高铁客运量（成都--重庆）（运营线路编码、列车编码、站点id、日期、到达时间、出发时间、上客量、下客量等，起点站、终点站、票价、收入等）.csv";
+      "高铁客运量（成都--"
+      "重庆）（运营线路编码、列车编码、站点id、日期、到达时间、出发时间、上客量"
+      "、下客量等，起点站、终点站、票价、收入等）.csv";
   configFile = "config.txt";
 }
 
 FileManager::FileManager(const std::string &dataDir) : dataDirectory(dataDir) {
   stationsFile = "客运站点（站点名称、站点编号、备注）.csv";
-  routesFile =
-      "运营线路客运站（运营线路编码、站点id、线路站点id、上一站id、运营线路站间距离 、下一站id、运输距离、线路代码）.csv";
+  routesFile = "运营线路客运站（运营线路编码、站点id、线路站点id、上一站id、运"
+               "营线路站间距离 、下一站id、运输距离、线路代码）.csv";
   trainsFile = "列车表（列车编码、列车代码、列车运量）.csv";
   flowRecordsFile =
-      "高铁客运量（成都--重庆）（运营线路编码、列车编码、站点id、日期、到达时间、出发时间、上客量、下客量等，起点站、终点站、票价、收入等）.csv";
+      "高铁客运量（成都--"
+      "重庆）（运营线路编码、列车编码、站点id、日期、到达时间、出发时间、上客量"
+      "、下客量等，起点站、终点站、票价、收入等）.csv";
   configFile = "config.txt";
 }
 
@@ -201,22 +205,61 @@ std::string FileManager::dateToString(const Date &date) const {
          std::to_string(date.day);
 }
 
-// 数据解析方法
+// 数据解析方法 - 适应实际CSV文件格式
 std::shared_ptr<Station>
 FileManager::parseStationFromCSV(const std::vector<std::string> &fields) const {
-  if (fields.size() < 8) {
+  // 实际CSV格式：zdid（站点编号）,,,lxid,,,ysfsbm,zdmc（站点名称）,,,,sfty（是否停用）,,station_code(站点代码）,station_telecode（站点电报码）,station_shortname(站点简称）,
+  if (fields.size() < 16) {
     return nullptr;
   }
 
   try {
-    std::string id = fields[0];
-    std::string name = fields[1];
-    std::string city = fields[2];
-    double longitude = std::stod(fields[3]);
-    double latitude = std::stod(fields[4]);
-    std::string type = fields[5];
-    int platformCount = std::stoi(fields[6]);
-    bool isTransfer = (fields[7] == "1" || fields[7] == "true");
+    // 从实际CSV文件中提取数据
+    std::string id = fields[14];        // station_telecode作为ID
+    std::string name = fields[7];       // zdmc（站点名称）
+    std::string shortName = fields[15]; // station_shortname(站点简称）
+    std::string code = fields[13];      // station_code(站点代码）
+
+    // 去除空格
+    name.erase(name.find_last_not_of(" \t\n\r\f\v") + 1);
+    shortName.erase(shortName.find_last_not_of(" \t\n\r\f\v") + 1);
+
+    // 如果站点名称为空，跳过
+    if (name.empty() || name == "NULL") {
+      return nullptr;
+    }
+
+    // 设置默认值
+    double longitude = 106.5 + (rand() % 200 - 100) * 0.01; // 模拟经度
+    double latitude = 29.5 + (rand() % 200 - 100) * 0.01;   // 模拟纬度
+    std::string type = "客运站";
+    int platformCount = 2 + rand() % 6; // 2-8个站台
+    bool isTransfer = false;
+
+    // 判断是否为重要站点（包含"东"、"西"、"南"、"北"等的大站）
+    if (name.find("东") != std::string::npos ||
+        name.find("西") != std::string::npos ||
+        name.find("南") != std::string::npos ||
+        name.find("北") != std::string::npos ||
+        name.find("中心") != std::string::npos) {
+      platformCount = 6 + rand() % 6; // 6-12个站台
+      isTransfer = true;
+    }
+
+    // 确定城市名称
+    std::string city = "其他";
+    if (name.find("北京") != std::string::npos)
+      city = "北京";
+    else if (name.find("天津") != std::string::npos)
+      city = "天津";
+    else if (name.find("成都") != std::string::npos)
+      city = "成都";
+    else if (name.find("重庆") != std::string::npos)
+      city = "重庆";
+    else if (name.find("唐山") != std::string::npos)
+      city = "唐山";
+    else if (name.find("石家庄") != std::string::npos)
+      city = "石家庄";
 
     return std::make_shared<Station>(id, name, city, longitude, latitude, type,
                                      platformCount, isTransfer);
@@ -238,9 +281,9 @@ std::string FileManager::formatStationToCSV(const Station &station) const {
 }
 
 // 解析线路CSV字段
-std::shared_ptr<Route>
-FileManager::parseRouteFromCSV(const std::vector<std::string> &fields,
-                               const std::vector<std::shared_ptr<Station>> &stations) const {
+std::shared_ptr<Route> FileManager::parseRouteFromCSV(
+    const std::vector<std::string> &fields,
+    const std::vector<std::shared_ptr<Station>> &stations) const {
   if (fields.size() < 6) {
     return nullptr;
   }
@@ -290,26 +333,55 @@ std::string FileManager::formatRouteToCSV(const Route &route) const {
   return oss.str();
 }
 
-// 解析列车CSV字段
-std::shared_ptr<Train>
-FileManager::parseTrainFromCSV(const std::vector<std::string> &fields,
-                               const std::vector<std::shared_ptr<Route>> &routes) const {
-  if (fields.size() < 4) {
+// 解析列车CSV字段 - 适应实际CSV文件格式
+std::shared_ptr<Train> FileManager::parseTrainFromCSV(
+    const std::vector<std::string> &fields,
+    const std::vector<std::shared_ptr<Route>> &routes) const {
+  // 实际CSV格式：lcbm（列车编码）,sxxbm,ysfsbm,lcdm（列车代码）,cc（车次）,sfzt,lcyn（列车运能）
+  if (fields.size() < 7) {
     return nullptr;
   }
 
   try {
-    std::string id = fields[0];
-    std::string type = fields[1];
-    std::string routeId = fields[2];
-    int capacity = std::stoi(fields[3]);
+    std::string trainCode = fields[4];   // cc（车次）
+    std::string capacityStr = fields[6]; // lcyn（列车运能）
 
-    auto it = std::find_if(routes.begin(), routes.end(),
-                           [&](const std::shared_ptr<Route> &r) {
-                             return r && r->getRouteId() == routeId;
-                           });
-    std::shared_ptr<Route> r = (it != routes.end()) ? *it : nullptr;
-    return std::make_shared<Train>(id, type, r, capacity);
+    // 如果车次为空，跳过
+    if (trainCode.empty() || trainCode == "NULL") {
+      return nullptr;
+    }
+
+    // 解析运能
+    int capacity = 1000; // 默认值
+    if (capacityStr != "#N/A" && capacityStr != "NULL" &&
+        !capacityStr.empty()) {
+      try {
+        capacity = std::stoi(capacityStr);
+      } catch (...) {
+        capacity = 1000;
+      }
+    }
+
+    // 确定列车类型
+    std::string type = "普通";
+    if (trainCode.find("G") == 0)
+      type = "高铁";
+    else if (trainCode.find("D") == 0)
+      type = "动车";
+    else if (trainCode.find("C") == 0)
+      type = "城际";
+    else if (trainCode.find("K") == 0)
+      type = "快速";
+    else if (trainCode.find("T") == 0)
+      type = "特快";
+
+    // 暂时不关联具体线路，设为空
+    std::shared_ptr<Route> route = nullptr;
+    if (!routes.empty()) {
+      route = routes[0]; // 使用第一条线路作为默认
+    }
+
+    return std::make_shared<Train>(trainCode, type, route, capacity);
   } catch (const std::exception &e) {
     lastError = std::string("解析列车数据错误: ") + e.what();
     return nullptr;
@@ -326,8 +398,8 @@ std::string FileManager::formatTrainToCSV(const Train &train) const {
   return oss.str();
 }
 
-FlowRecord
-FileManager::parseFlowRecordFromCSV(const std::vector<std::string> &fields) const {
+FlowRecord FileManager::parseFlowRecordFromCSV(
+    const std::vector<std::string> &fields) const {
   if (fields.size() < 9) {
     return FlowRecord();
   }
@@ -462,9 +534,10 @@ bool FileManager::saveFlowRecords(const PassengerFlow &passengerFlow) {
     lastError = "无法打开文件: " + fullPath;
     return false;
   }
-  file << "RecordID,StationID,StationName,Date,Hour,BoardingCount,AlightingCount,TrainID,Direction\n";
-  auto records = passengerFlow.getRecordsByDateRange(Date(0, 1, 1),
-                                                     Date(9999, 12, 31));
+  file << "RecordID,StationID,StationName,Date,Hour,BoardingCount,"
+          "AlightingCount,TrainID,Direction\n";
+  auto records =
+      passengerFlow.getRecordsByDateRange(Date(0, 1, 1), Date(9999, 12, 31));
   for (const auto &rec : records) {
     file << formatFlowRecordToCSV(rec) << '\n';
   }
@@ -511,7 +584,8 @@ bool FileManager::exportStationsToCSV(
     lastError = "无法打开文件: " + getFullPath(filename);
     return false;
   }
-  file << "StationID,StationName,CityName,Longitude,Latitude,StationType,PlatformCount,IsTransferStation\n";
+  file << "StationID,StationName,CityName,Longitude,Latitude,StationType,"
+          "PlatformCount,IsTransferStation\n";
   for (const auto &station : stations) {
     if (station)
       file << formatStationToCSV(*station) << '\n';
@@ -542,7 +616,8 @@ bool FileManager::exportFlowRecordsToCSV(const PassengerFlow &passengerFlow,
     lastError = "无法打开文件: " + getFullPath(filename);
     return false;
   }
-  file << "RecordID,StationID,StationName,Date,Hour,BoardingCount,AlightingCount,TrainID,Direction\n";
+  file << "RecordID,StationID,StationName,Date,Hour,BoardingCount,"
+          "AlightingCount,TrainID,Direction\n";
   auto records =
       passengerFlow.getRecordsByDateRange(Date(0, 1, 1), Date(9999, 12, 31));
   for (const auto &rec : records) {

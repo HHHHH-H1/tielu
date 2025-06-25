@@ -25,7 +25,7 @@ HEADERS += Station.h \
 DESTDIR = bin
 
 win32 {
-    QMAKE_CXXFLAGS += -finput-charset=UTF-8 -fexec-charset=GBK
+    QMAKE_CXXFLAGS += -finput-charset=UTF-8 -fexec-charset=UTF-8
     LIBS += -lmingw32
     LIBS += $$[QT_INSTALL_LIBS]/libQt6EntryPoint.a
     LIBS += -lshell32 -lkernel32 -luser32 -lgdi32 -lcomdlg32 -ladvapi32
